@@ -233,9 +233,10 @@ function es() {
     es_out "* BASH VERSION: ${BASH_VERSION}"
     es_out "* GIT VERSION: ${ESSENTIALS_VERSION_GIT}"
     es_out "* VIM VERSION: ${ESSENTIALS_VERSION_VIM}"
+    es_out "* HOME REPO: ${ESSENTIALS_VERSION_HOME} (commit $( es_repo_version ${ESSENTIALS_HOME} | sed 's| |, |'))"
     es_out
     es_out "$( color white_bold )ESSENTIALS:$( color )"
-    es_out "* VERSION: ${ESSENTIALS_VERSION} (commit $( es_repo_version | sed 's| |, |'))"
+    es_out "* VERSION: ${ESSENTIALS_VERSION} (commit $( es_repo_version ${ESSENTIALS_DIR} | sed 's| |, |'))"
     es_out "* DIR ESSENTIALS: ${ESSENTIALS_DIR}/"
     es_out "* DEBUG: ${ESSENTIALS_DEBUG}"
     es_out "* LOG: ${ESSENTIALS_LOG} (-> ${ESSENTIALS_LOGFILE})"

@@ -4,8 +4,8 @@
 export ESSENTIALS_DIR="${ESSENTIALS_DIR:-$( dirname $( realpath ${BASH_SOURCE[0]}))}"
 
 # include the essential libs
-tmpname="resources.sh prompt.sh functions.sh applications.sh"
-for script in $tmpname ; do
+tmpname="resources.sh applications.sh prompt.sh functions.sh"
+for script in ${tmpname} ; do
     if [ -r ${ESSENTIALS_DIR}/${script} ] ; then
         . ${ESSENTIALS_DIR}/${script}
     else
@@ -17,13 +17,13 @@ done
 # check mandatory depends
 es_depends_essentials || es_return 1 "missing depends for essentials"
 tmpname="pstree"
-for bin in $tmpname ; do
+for bin in ${tmpname} ; do
     es_depends "${bin}" "bin" || es_return 1 "missing depends for essentials: ${bin}"
 done
 
 # check optional depends
 tmpname="toilet toilet-fonts git vim-nox colordiff wdiff fping"
-for pkg in $tmpname ; do
+for pkg in ${tmpname} ; do
     es_depends "${pkg}" "debian" || es_out "optional depends $pkg missing" "warning"
 done
 
@@ -41,9 +41,10 @@ export ESSENTIALS_DEBUG="${ESSENTIALS_DEBUG:-true}"
 export ESSENTIALS_LOG="${ESSENTIALS_LOG:-true}"
 export ESSENTIALS_COLORS="${ESSENTIALS_COLORS:-true}"
 export ESSENTIALS_UNICODE="${ESSENTIALS_UNICODE:-true}"
-export ESSENTIALS_VERSION=$( es_repo_version_date )
+export ESSENTIALS_VERSION=$( es_repo_version_date ${ESSENTIALS_DIR} )
 export ESSENTIALS_VERSION_VIM=$( vim --version | grep -o "[0-9.]\+" | head -n 1 )
 export ESSENTIALS_VERSION_GIT=$( git --version | sed 's/git version //' )
+export ESSENTIALS_VERSION_HOME=$( es_repo_version_date ${ESSENTIALS_HOME} )
 export ESSENTIALS_IS_SUDO=$( pstree -s "$$" | grep -qi 'sudo' ; echo ${BOOLEAN[$?]} )
 export ESSENTIALS_IS_ROOT=$( [ $( id -u ) -eq 0 ] && ! ${ESSENTIALS_IS_SUDO} ; echo ${BOOLEAN[$?]} )
 export ESSENTIALS_IS_UID0=$( ${ESSENTIALS_IS_SUDO} || ${ESSENTIALS_IS_ROOT} ; echo ${BOOLEAN[$?]} )
@@ -53,9 +54,9 @@ export ESSENTIALS_IS_TMUX=$( pstree -s "$$" | grep -qi 'tmux' ; echo ${BOOLEAN[$
 export ESSENTIALS_IS_SCREEN=$( pstree -s "$$" | grep -qi 'screen' ; echo ${BOOLEAN[$?]} )
 export ESSENTIALS_HAS_SSHAGENT=$( [ -n "$( ps hp ${SSH_AGENT_PID} 2>/dev/null )" ] ; echo ${BOOLEAN[$?]} ) 
 
-# in debug mode -> print banner + settings overview 
+# in debug mode -> print banner + settings overview
 ${ESSENTIALS_DEBUG} && es
 
 # cleanup
-unset tmpname script pkg
+unset tmpname script bin pkg
 
