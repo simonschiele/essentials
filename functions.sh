@@ -907,5 +907,9 @@ alias sed.remove_special_chars='sed "s,\x1B\[[0-9;]*[a-zA-Z],,g"'
 
 #wget -q -O- http://www.di.fm/ | grep -o 'data-tunein-url="[^"]*"' | cut -f'2' -d'"'  
 
+function wget.stdout() {
+    wget -O- -q $@ || wget -O- -S $@
+}
+
 unset tmpname
 
