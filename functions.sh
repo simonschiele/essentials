@@ -755,7 +755,13 @@ alias find.comma='ls -r --format=commas'
 function find.tree() {
     local dir="${1}"
     shift
-    find "${dir:-.}" -print | sed -e 's;[^/]*/;|__;g;s;__|; |;g'
+   
+    if [ "${dir}" == "-d" ] ; then
+        local dir_find="-type d "
+        local dir="${1}"
+    fi
+    
+    find "${dir:-.}" ${dir_find} -print | sed -e 's;[^/]*/;|__;g;s;__|; |;g'
 }
 
 # date/time stuff
@@ -828,8 +834,11 @@ alias show.certs='openssl s_client -connect '
 alias speedtest='wget -O- http://cachefly.cachefly.net/200mb.test > /dev/null'
 alias calculator='bc -l'
 alias calc='calculator'
-alias html.strip='sed -e "s|<[^>]*>||g"'
-alias html.umlaute='sed -e "s|ü|\&uuml;|g" -e "s|Ü|\&Uuml;|g" -e "s|ä|\&auml;|g" -e "s|Ä|\&Auml;|g" -e "s|ö|\&ouml;|g" -e "s|Ö|\&Ouml;|g" -e "s|ß|\&szlig;|g"' # todo: untested
+
+alias sed.strip_html='sed -e "s|<[^>]*>||g"'
+alias sed.htmlencode_umlaute='sed -e "s|ü|\&uuml;|g" -e "s|Ü|\&Uuml;|g" -e "s|ä|\&auml;|g" -e "s|Ä|\&Auml;|g" -e "s|ö|\&ouml;|g" -e "s|Ö|\&Ouml;|g" -e "s|ß|\&szlig;|g"' # todo: untested
+alias sed.strip_doubleslash='sed "s|[/]\+|/|g"'
+
 alias http.response='lwp-request -ds'
 alias show.keycodes='xev | grep -e keycode -e button'
 alias patch.from_diff='patch -Np0 -i'
@@ -837,7 +846,6 @@ alias show.usb_sticks='for dev in $( udisks --dump | grep device-file | sed "s|^
 alias btc.worldwide='wget -q -O- https://bitpay.com/api/rates | json_pp'
 alias btc='echo -e "€: $( btc.worldwide | grep -C2 Euro | grep -o [0-9\.]* )" ; echo "$: $( btc.worldwide | grep -C2 USD | grep -o [0-9\.]* )"'
 alias kill.chrome='echo kill -9 $( ps aux | grep -i chrome | awk {"print $2"} | xargs ) 2>/dev/null'
-alias strip.doubleslash='sed "s|[/]\+|/|g"'
 alias iso.grml='iso=$( ls -rt /share/Software/images/grml96*iso 2>/dev/null | tail -n1 ) ; iso=${iso:-$( find /boot -iname "grml*iso" 2>/dev/null )} ; iso=${iso:-$( find ~/ -iname "*grml*iso" 2>/dev/null | tail -n1 )} ; echo "$iso"'
 alias kvm.hd='kvm -m 1024 -boot c -hda'
 alias kvm.grml+hd='iso=$( iso.grml ) ; kvm -cdrom ${iso} -m 1024 -boot d -hda'
