@@ -9,8 +9,8 @@ function confirm.whiptail_yesno() {
 function confirm.yesno() {
     while read -p "${1:-Are you sure (Y/N)? }" -r -n 1 -s answer; do
         if [[ $answer = [YyNn] ]]; then
-            [[ $answer = [Yy] ]] && ( echo ; return 0 ) 
-            [[ $answer = [Nn] ]] && ( echo ; return 1 ) 
+            [[ $answer = [Yy] ]] && ( echo ; return 0 )
+            [[ $answer = [Nn] ]] && ( echo ; return 1 )
             break
         fi
     done
@@ -27,8 +27,8 @@ function confirm.keypress() {
 function whereami() {
 
     ips=$( /sbin/ifconfig | grep -o "[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}" | sort -u | grep -v -e "^127" -e "^255" )
-    if ( grep -q -i wlan-ap[0-9] <( /sbin/iwconfig 2>&1 )) && ( grep -q -i 192\.168\.190 <( /sbin/ifconfig 2>&1 )) ; then 
-        echo "work-mobile" 
+    if ( grep -q -i wlan-ap[0-9] <( /sbin/iwconfig 2>&1 )) && ( grep -q -i 192\.168\.190 <( /sbin/ifconfig 2>&1 )) ; then
+        echo "work-mobile"
     elif ( echo $ips | grep -q -e "192\.168\.[78]0" -e "195\.4\.7[01]" ) ; then
         echo "work"
     elif ( echo $ips | grep -q -e "192\.168\.5" ) ; then
@@ -44,7 +44,7 @@ function whereami() {
 
 function verify_su() {
     if [ "$( id -u )" == "0" ] ; then
-        return 0 
+        return 0
     elif ( sudo -n echo -n ) ; then
         return 0
     elif ( sudo echo -n ) ; then
@@ -54,7 +54,7 @@ function verify_su() {
     fi
 }
 
-# }}} 
+# }}}
 
 # {{{ web.google()
 
@@ -67,7 +67,7 @@ function web.google() {
     unset stream AGENT GOOG_URL Q
 }
 
-# }}} 
+# }}}
 
 # {{{ nzb.queue()
 
@@ -83,7 +83,7 @@ function nzb.queue() {
         local action="mv -v"
         local delete=false
     fi
-    
+
     if [[ -z "${@}" ]] ; then
         if ls ~/Downloads/*[nN][zZ][bB] 2>/dev/null >&2 ; then
             if ( ${action} ~/Downloads/*[nN][zZ][bB] ${target} ) ; then
@@ -103,21 +103,21 @@ function nzb.queue() {
     fi
 }
 
-# }}} 
+# }}}
 
 # {{{ return.unicode()
 
 function return.unicode() {
     if [ ${1} -gt 0 ] ; then
-        echo -e " ${COLOR[red]}${ICON[fail]}${COLOR[none]}" 
+        echo -e " ${COLOR[red]}${ICON[fail]}${COLOR[none]}"
     else
-        echo -e " ${COLOR[green]}${ICON[success]}${COLOR[none]}" 
+        echo -e " ${COLOR[green]}${ICON[success]}${COLOR[none]}"
     fi
-    
+
     return ${1}
 }
 
-# }}} 
+# }}}
 
 # {{{ show.repo()
 
@@ -132,29 +132,29 @@ function show.repo() {
 function update.repo() {
     local debug dir repo
     shopt -s extglob
-   
+
     debug=true
     dir=${1:-$( pwd )}
     dir=${dir%%+(/)}
-   
+
     repo=false
     submodule=false
     below_repo=false
-    
+
     if [ -d "${dir}/.git" ] && [ -e "${dir}/.git/index" ] ; then
         repo=true
     elif [ -e "${dir}/.git" ] && [ -d "$( head -n 1 "${dir}/.git" | cut -f'2' -d' ' )" ] ; then
         submodule=true
     elif ( LANG=C git rev-parse 2>/dev/null ) ; then
         below_repo=true
-        return 2 
+        return 2
     else
         echo "error: '$( pwd )' is not inside a repository" >&2
         return 1
     fi
 
-    return 0 
-    
+    return 0
+
     if [ -d .git ] && [ -e ${diri} ] ; then
         echo ${dir}
     elif [] ; then
@@ -162,9 +162,9 @@ function update.repo() {
     else
         echo -n
     fi
-    
+
     return 0
-    
+
     local repo="${1}"
     local dir="${2}"
 
@@ -178,7 +178,7 @@ function update.repo() {
         cd "${dir}" 2>/dev/null && local out=$( LANG=C git pull --recurse-submodules=yes 2>&1 )
         local ret=$? ; [ $ret -eq 0 ] && cd ${OLDPWD}
     fi
-    
+
     return.unicode $ret
     return $ret
 }
@@ -223,20 +223,20 @@ function show.stats() {
     color.echon "white_bold" "Host: " ; hostname
     color.echon "white_bold" "Location: " ; whereami
     color.echon "white_bold" "Systemtype: " ; echo "${system_type}"
-    
+
     echo -e "\n${COLOR[white_under]}${COLOR[white_bold]}Hardware:${COLOR[none]}"
-    
+
     cpu=$( grep "^model\ name" /proc/cpuinfo | sed -e "s|^[^:]*:\([^:]*\)$|\1|g" -e "s/[\ ]\{2\}//g" -e "s|^\ ||g" )
     echo -e 'cpu: '$( echo -e "$cpu" | wc -l )'x '$( echo "$cpu" | head -n1 )
-    
+
     ram=$( LANG=c free -m | grep ^Mem | awk {'print $2'} )
     echo -ne "ram: ${ram}mb (free: $( free -m | grep cache\: | awk {'print $4'} )mb, "
     #free | awk '/Mem/{printf("used: %.2f%"), $3/$2*100} /buffers\/cache/{printf(", buffers: %.2f%"), $4/($3+$4)*100} /Swap/{printf(", swap: %.2f%"), $3/$2*100}'
-    
+
     local swap=$( LANG=c free | grep "^swap" | sed 's|^swap\:[0\ ]*||g' )
     [ -z "$swap" ] && echo -n "swap: no active swap" || echo -n "swap: ${swap}"
-    echo ")" 
-    
+    echo ")"
+
     LANG=C df -h | grep "\ /$" | awk {'print "hd: "$2" (root, free: "$4")"'}
 }
 
@@ -251,7 +251,7 @@ function good_morning() {
 
     local status=0
     local has_root=false
-    
+
     clear
     echo.header "${COLOR[white_bold]}Good Morning, ${SUDO_USER:-${USER^}}!${COLOR[none]}"
     show.stats
@@ -274,10 +274,10 @@ function good_morning() {
             sudo_cmd="sudo"
         fi
     fi
-   
+
     echo -e "\n${COLOR[white_under]}${COLOR[white_bold]}Debian:${COLOR[none]}"
     echo "version: $( lsb_release -ds 2>&1 )"
-    
+
     echo -n "updating packagelists: "
     local out=$( ${sudo_cmd} apt-get update 2>&1 )
     local ret=$?
@@ -287,10 +287,10 @@ function good_morning() {
         echo -e "failed ${COLOR[red]}${icon[fail]}${COLOR[none]}"
         let status++
     fi
-    
+
     echo -en "available updates: "
     yes "no" | ${sudo_cmd} apt-get dist-upgrade 2>&1 | grep --color=never "upgraded.*installed.*remove.*upgraded"
-    
+
     echo -e "Latest Security Advisories: "
     debian.security
 
@@ -298,9 +298,9 @@ function good_morning() {
     update.repo git@psaux.de:dot.bin-ypsilon.git ~/.bin-ypsilon/ || let status++
     update.repo git@psaux.de:dot.bin-private.git ~/.bin-private/ || let status++
     update.repo git@simon.psaux.de:dot.fonts.git ~/.fonts/ || let status++
-    update.repo git@simon.psaux.de:dot.backgrounds.git ~/.backgrounds/ || let status++ 
-    update.repo git@simon.psaux.de:home.git ~/ || let status++ 
-    
+    update.repo git@simon.psaux.de:dot.backgrounds.git ~/.backgrounds/ || let status++
+    update.repo git@simon.psaux.de:home.git ~/ || let status++
+
     echo.header "${COLOR[white_bold]}Have a nice day, ${SUDO_USER:-${USER^}}! (-:${COLOR[none]}"
     return $status
 }
@@ -309,12 +309,12 @@ function good_morning() {
 
 # {{{ date.* + date/time stuff
 
-worldclock() { 
+worldclock() {
     zones="America/Los_Angeles America/Chicago America/Denver America/New_York Iceland Europe/London"
     zones="${zones} Europe/Paris Europe/Berlin Europe/Moscow Asia/Hong_Kong Australia/Sydney"
 
-    for tz in $zones 
-    do 
+    for tz in $zones
+    do
         local tz_short=$( echo ${tz} | cut -f'2' -d'/' )
         echo -n -e "${tz_short}\t"
         [[ ${#tz_short} -lt 8 ]] && echo -n -e "\t"
@@ -338,15 +338,15 @@ alias stopwatch='time read -n 1'
 
 function debian.add_pubkey() {
     if ! verify_su ; then
-        echo "you need root/sudo permissions to call debian_add_pubkey" 1>&2 
+        echo "you need root/sudo permissions to call debian_add_pubkey" 1>&2
         return 1
     elif [ -z "${1}" ] ; then
         echo "Please call like:"
-        echo " > debian_add_pubkey path/to/file.key" 
+        echo " > debian_add_pubkey path/to/file.key"
         echo "or"
-        echo " > debian_add_pubkey 07DC563D1F41B907" 
+        echo " > debian_add_pubkey 07DC563D1F41B907"
     elif [ -e ${1} ] ; then
-        echo "import via keyfile not implemented yet" 1>&2 
+        echo "import via keyfile not implemented yet" 1>&2
         return 1
     else
         if ( sudo gpg --keyserver pgpkeys.mit.edu --recv-key ${1} ) && ( sudo gpg -a --export ${1} | sudo apt-key add - ) ; then
@@ -357,7 +357,7 @@ function debian.add_pubkey() {
     fi
 }
 
-function debian.security() { 
+function debian.security() {
     wget -q -O- https://www.debian.org/security/dsa \
         | xml2 \
         | grep -o -e "item/title=.*$" -e "item/dc:date=.*$" -e "item/link=.*$" \
@@ -379,7 +379,7 @@ function debian.packages_custom_get() {
         echo "Unknown Systemtype '$pkglist'"
         return 1
     fi
-    
+
     local lists="$listtype $(grep ^[\.] $pkglist | sed 's|^[\.]\ *||g')"
     lists=$( echo $lists | sed "s|\([A-Za-z0-9]*\.list\)|${HOME}/.packages/\1|g" )
 
@@ -398,17 +398,17 @@ alias debian.package_configfiles='dpkg-query -f "\n${Package} \n${Conffiles}\n" 
 
 alias scan.wlans='/sbin/iwlist scanning 2>/dev/null | grep -e "Cell" -e "Channel:" -e "Encryption" -e "ESSID" -e "WPA" | sed "s|Cell|\nCell|g"'
 
-function scan.hosts() { 
+function scan.hosts() {
     local routing_interface=$( LANG=C /sbin/route -n | grep "^[0-9 :\.]\+ U .*[a-z]\+[0-9]\+" | head -n 1 )
     local routing_interface=${routing_interface##* }
     local network="$( LANG=C /sbin/ifconfig ${routing_interface} | grep -o 'inet addr[^ ]*' | grep -o '[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.' )0/24"
-    fping -q -a -g ${network} | while read ip ; do 
+    fping -q -a -g ${network} | while read ip ; do
         echo -ne "${ip}\t"
         echo -e "$( host -W 1 ${ip} | grep -o '[^ ]*.$' | sed 's|\.$||g' )"
-    done 
+    done
 }
 
-# }}} 
+# }}}
 
 # {{{ save.* (battery stuff)
 
@@ -418,11 +418,11 @@ function save.battery_lifetime() {
 }
 
 function save.battery() {
-    if ! [ $( id -u ) -eq 0 ] ; then 
+    if ! [ $( id -u ) -eq 0 ] ; then
         echo "please use root or sudo -s" >&2
         return 1
     fi
-    
+
     es_debug " * setting gov powersave for all $( grep ^process /proc/cpuinfo | wc -l ) cores"
     ${ESSENTIALS_DEBUG} && echo -n "[LOG]   " >&2
     seq 0 $( grep ^process /proc/cpuinfo | tail -n 1 | grep -o "[0-9]" ) | while read i ; do
@@ -430,10 +430,10 @@ function save.battery() {
         cpufreq-set -c ${i} -g powersave
     done
     ${ESSENTIALS_DEBUG} && echo "" >&2
-    
+
     es_debug " * turn off NMI watchdog"
     echo '0' > '/proc/sys/kernel/nmi_watchdog'
-   
+
     es_debug " * auto suspend bluetooth"
     echo 'auto' > /sys/bus/usb/devices/1-1.4/power/control
 
@@ -442,7 +442,7 @@ function save.battery() {
 
     es_debug " * deactivate WOL for eth0"
     ethtool -s eth0 wol d
-  
+
     es_debug " * enable audio codec power management"
     echo '1' > /sys/module/snd_hda_intel/parameters/power_save
 
@@ -451,7 +451,7 @@ function save.battery() {
 
     es_debug " * wireless power saving for wlan0"
     iw dev wlan0 set power_save on
-    
+
     es_debug " * activating sata link power managenment on host0-host$(( $( ls /sys/class/scsi_host/host*/link_power_management_policy | wc -l ) - 1 ))"
     seq 0 $(( $( ls /sys/class/scsi_host/host*/link_power_management_policy | wc -l ) - 1 )) | while read i ; do
         echo 'min_power' > /sys/class/scsi_host/host${i}/link_power_management_policy
@@ -477,7 +477,7 @@ function no.sleep() {
     xset -display ${DISPLAY:-:0} -dpms
 }
 
-# }}} 
+# }}}
 
 # {{{ show.*
 
@@ -491,7 +491,7 @@ function show.tlds() {
 
 function grep.tld() {
     local input
-     
+
     function process() {
         local iinput
         echo "${1}" | grep -o "[^\ \"\']\+\.[A-Za-z]\+" | while read iinput ; do
@@ -499,40 +499,40 @@ function grep.tld() {
             show.tlds | grep "^${clean_input}$"
         done
     }
-    
+
     while read -t 1 -r input ; do
-        [ -z "${input}" ] && break 
+        [ -z "${input}" ] && break
         process "${input}"
     done
 
     for input in ${@} ; do
         process "${input}"
     done
-     
-    unset process    
+
+    unset process
 }
 
 function show.path() {
     local path="${1}"
     local path_real=$( realpath "${path}" )
-    local filetype=$( file -b "${path}" ) 
+    local filetype=$( file -b "${path}" )
     local filetype_real=$( file -b "${path_real}" )
     local size=$( ls -s "${path_real}" | awk {'print $1'} )
     local size_human=$( ls -sh "${path_real}" | awk {'print $1'} )
-    
+
     echo -e "name:\t\t$( color white_bold )${path}$( color none )"
     echo -e "type:\t\t${filetype}"
-    
+
     if [ -h "${path}" ] ; then
         echo -e "real path:\t${path_real}"
         echo -e "real type:\t${filetype_real}"
     fi
-    
+
     if [ -d "${real_path}" ] ; then
-        echo 
+        echo
     else
         echo -e "size:\t\t${size_human} (${size})"
-        echo  
+        echo
     fi
 }
 
@@ -542,7 +542,7 @@ alias show.file=show.path
 function show.host() {
     local ip=$( echo "${1}" | grep.ip | head -n 1 )
     local host=${1}
-    
+
     if [ -n "$host" ] && [ -z "$ip" ] ; then
         ip=$( host ${host} | grep "has address " | grep.ip )
     elif [ -n "$ip" ] ; then
@@ -551,9 +551,9 @@ function show.host() {
         echo "'${1}' neither ip address nor hostname"
         return 1
     fi
-    
-    echo "host: ${host}" 
-    echo "ip: ${ip}" 
+
+    echo "host: ${host}"
+    echo "ip: ${ip}"
 }
 
 function show() {
@@ -584,22 +584,22 @@ alias show.udp='sudo netstat -aup'
 alias show.udp_stats='sudo netstat -su'
 alias show.window_class='xprop | grep CLASS'
 alias show.resolution='LANG=C xrandr -q | grep -o "current [0-9]\{3,4\} x [0-9]\{3,4\}" | sed -e "s|current ||g" -e "s|\ ||g"'
-alias show.certs='openssl s_client -connect ' 
+alias show.certs='openssl s_client -connect '
 
 # }}}
 
 # {{{ is.*
 
-function is.systemd() { 
+function is.systemd() {
     sudo LANG=C lsof -a -p 1 -d txt | grep -q "^systems\ *1\ *"
     return $?
 }
 
 function is.init_five() {
-    find /etc/rc[1-5].d/ ! -type d -executable -exec basename {} \; | sed 's/^[SK][0-9][0-9]//g' | sort -u | xargs'
+    find /etc/rc[1-5].d/ ! -type d -executable -exec basename {} \; | sed 's/^[SK][0-9][0-9]//g' | sort -u | xargs
 }
 
-# }}} 
+# }}}
 
 # {{{ find.*
 
@@ -615,14 +615,15 @@ alias find.comma='ls -r --format=commas'
 
 function find.tree() {
     local dir="${1}"
-    shift
-   
-    if [ "${dir}" == "-d" ] ; then
-        local dir_find="-type d "
-        local dir="${1}"
-    fi
     
-    find "${dir:-.}" ${dir_find} -print | sed -e 's;[^/]*/;|__;g;s;__|; |;g'
+    if [ "${dir}" == "-d" ] ; then
+        shift
+        local dir_find="-type d "
+        dir="${1}"
+    fi
+
+    #| sed -e 's;[^/]*/;|__;g;s;__|; |;g'
+    echo find "${dir:-.}" ${dir_find} -print  
 }
 
 alias find.videos="find . ! -type d $( echo ${EXTENSIONS_VIDEO}\" | sed -e "s|,|\"\ \-o\ \-iname \"*|g" -e "s|^|\ \-iname \"*|g" )"
@@ -633,7 +634,7 @@ alias find.archives="find . ! -type d $( echo ${EXTENSIONS_ARCHIVES}\" | sed -e 
 
 # }}}
 
-# {{{ git.* 
+# {{{ git.*
 
 function git.subupd() {
     git submodule foreach git fetch origin --tags && git pull && git submodule update --init --recursive
@@ -645,12 +646,12 @@ function git.is_submodule() {
 
 function git.dirty_ignore() {
     local dot_git=$( git rev-parse --is-inside-work-tree >/dev/null 2>&1 && git rev-parse --git-dir 2>/dev/null )
-    
+
     if [ -z "$dot_git" ] ; then
         echo "Couldn't find repo" >&2
         return 1
     fi
-     
+
     #"config" -> "ignore = dirty"
 }
 
