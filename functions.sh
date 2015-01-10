@@ -904,11 +904,10 @@ alias sed.remove_special_chars='sed "s,\x1B\[[0-9;]*[a-zA-Z],,g"'
 #alias image2pdf='convert -adjoin -page A4 *.jpeg multipage.pdf'				# convert images to a multi-page pdf
 #nrg2iso() { dd bs=1k if="$1" of="$2" skip=300 }
 
-
 #wget -q -O- http://www.di.fm/ | grep -o 'data-tunein-url="[^"]*"' | cut -f'2' -d'"'  
 
 function wget.stdout() {
-    wget -O- -q $@ || wget -O- -S $@
+    wget -O- -q ${@} || wget -O- -S ${@}
 }
 
 unset tmpname
