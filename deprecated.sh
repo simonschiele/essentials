@@ -41,6 +41,19 @@
     #PS1homeenv="${PS1homeenv:+$( color.ps1 red )${PS1homeenv}$( color.ps1 none )}"
     #PS1homeenv=${PS1homeenv:+ (${PS1homeenv})}
 
+# old stuff
+#alias route_via_wlan="for i in \`seq 1 10\` ; do route del default 2>/dev/null ; done ; route add default eth0 ; route add default wlan0 ; route add default gw \"\$( /sbin/ifconfig wlan0 | grep.ip | head -n 1 | cut -f'1-3' -d'.' ).1\""
+#alias 2audio="convert2 mp3"
+#alias youtube-mp3="clive -f best --exec=\"echo >&2; echo '[CONVERTING] %f ==> MP3' >&2 ; ffmpeg -loglevel error -i %f -strict experimental %f.mp3 && rm -f %f\""
+#alias youtube="clive -f best --exec=\"( echo %f | grep -qi -e 'webm$' -e 'webm.$' ) && ( echo >&2 ; echo '[CONVERTING] %f ==> MP4' >&2 ; ffmpeg -loglevel error -i %f -strict experimental %f.mp4 && rm -f %f )\""
+#alias image2pdf='convert -adjoin -page A4 *.jpeg multipage.pdf'				# convert images to a multi-page pdf
+#nrg2iso() { dd bs=1k if="$1" of="$2" skip=300 }
+
+#wget -q -O- http://www.di.fm/ | grep -o 'data-tunein-url="[^"]*"' | cut -f'2' -d'"'  
+
+# random.password+phpass() { local pass="${@:-$( random.password 12 )}" ; python -c "from passlib.hash import phpass ; print phpass.encrypt('${pass}')" }
+
+
 function es_called() {
     if [ -n "${BASH_SOURCE[2]}" ] ; then
         echo "CALLED: SOURCED"
@@ -72,6 +85,120 @@ function es_called() {
             j=$(( $j + 1 ))
         done
     fi
+}
+
+# }}}
+
+# sorgenkinder
+alias show.open_ports='echo -e "User:      Command:   Port:\n----------------------------" ; sudo "lsof -i 4 -P -n | grep -i listen | awk {\"print \$3, \$1, \$9\"} | sed \"s| [a-z0-9\.\*]*:| |\" | sort -k 3 -n | xargs printf \"%-10s %-10s %-10s\n\"" | uniq'
+alias log.authlog="sudo grep -e \"^\$( LANG=C date -d'now -24 hours' +'%b %e' )\" -e \"^\$( LANG=C date +'%b %e' )\" /var/log/auth.log | grep.ip | sort -n | uniq -c | sort -n | grep -v \"\$( host -4 enkheim.psaux.de | grep.ip | head -n1 )\" | tac | head -n 10"
+alias hooks.run="echo ; systemtype=\$( grep ^systemtype ~/.system.conf | cut -f2 -d'=' | sed -e 's|[\"\ ]||g' -e \"s|'||g\" ) ; for exe in \$( find ~/.hooks/ ! -type d -executable | xargs grep -l \"^hook_systemtype.*\${systemtype}\" | xargs grep -l '^hook_optional=false' ) ; do exec_with_sudo='' ; grep -q 'hook_sudo=.*true.*' \"\${exe}\" && exec_with_sudo='sudo ' || grep -q 'hook_sudo' \"\${exe}\" || exec_with_sudo='sudo ' ; cancel=\${cancel:-false} global_success=\${global_success:-true} \${exe} ; retval=\${?} ; echo ; if test \${retval} -eq 2 ; then echo -e \"CANCELING HOOKS\" >&2 ; break ; elif ! test \${retval} -eq 0 ; then global_success=false ; fi ; done ; \${global_success} || echo -e \"Some hooks could NOT get processed successfully!\n\" ; unset global_success systemtype retval ;"
+
+# compression
+alias zip.dir='compress zip'
+alias rar.dir='compress rar'
+alias tar.dir='compress targz'
+
+# mirror
+# {{{ compress()
+
+compress() {
+    local OLDOPTIND=$OPTIND 
+    local HELP=false
+    local DATE=false
+    local VERBOSE=''
+    local ERROR='' 
+    
+    while getopts ":hdv" opt ; do
+        case $opt in
+            h)
+                HELP=true
+                ;;
+            d)
+                DATE=true
+                ;;
+            v)
+                VERBOSE=true
+                ;;
+            \?)
+                ERROR="Unknown Flag: -$OPTARG"
+                ;;
+        esac
+    done
+    shift $((OPTIND-1))
+    OPTIND=$OLDOPTIND
+   
+    ! ${HELP} && [ -z "${ERROR}" ] && ([ -z "${1}" ] || [ -z "${2}" ]) && \
+        ERROR="Please give at least a type of archive and what to compress"
+
+    $HELP || [ -n "${ERROR}" ] && \
+        echo "${FUNCNAME} [-h] [-d] <rar|zip|file.tar.gz> <dir/> [<data.txt|data2/>]"
+    
+    [ -n "$ERROR" ] && echo ${ERROR} && return 1
+    $HELP && return 0
+
+        ( [ -n "${ERROR}" ] && return 1 || return 0 )
+   
+    local target="${1}"
+    local content="${2}"
+    shift
+    
+    local archivetype="${target##*.}" 
+    local change_dir=false
+    
+    if [ "$( basename ${content} )" == "." ]
+    then
+        content=$( basename "$( pwd )" | sed 's|\ |\\ |g' )
+        change_dir=true
+    else
+        content="$@"
+    fi
+
+    [ $change_dir ] && cd ..
+
+    local status=true
+    case "${archivetype,,}" in
+        rar)
+            archivetype="rar"
+            local cmd="rar a -ol -r -ow -idc $( ! [ ${VERBOSE} ] && echo '-inul' ) --"
+            ;;
+        zip)
+            archivetype="zip"
+            local cmd="zip -r -y $( ! [ ${VERBOSE} ] && echo '-q' )"
+            ;;
+        bzip2|bz2)
+            archivetype="tar.bz2"
+            local cmd="tar cjf${VERBOSE:+v}"
+            ;;
+        tar|gz|targz|tgz)
+            archivetype="tar.gz"
+            local cmd="tar czf${VERBOSE:+v}"
+            ;;
+        *)
+            echo "Archivformat '${archivetype}' is not supported" && status=false
+            ;;
+    esac
+    
+    if [ "${archivetype}" == "${target}" ] || ! ( echo "$target" | grep -q "\." )
+    then
+        [ -n "${2}" ] && echo "Autonaming is only supported if you compress only one file or directory" && return 1
+        local cleancontent=$( basename ${content} | sed -e 's|^\.|dot.|g' )
+        target="${cleancontent%.*}.${archivetype}"
+    fi
+    
+    $status && $cmd $target $content
+    
+    [ $change_dir ] && cd "${OLDPWD}"
+
+    return $( $status )
+}
+
+# }}}
+
+# {{{ convert2()
+
+convert2() {
+    ext=${1} ; shift ; for file ; do echo -n ; [ -e "$file" ] && ( echo -e "\n\n[CONVERTING] ${file} ==> ${file%.*}.${ext}" && ffmpeg -loglevel error -i "${file}" -strict experimental "${file%.*}.${ext}" && echo rm -i "${file}" ) || echo "[ERROR] File not found: ${file}" ; done
 }
 
 # }}}

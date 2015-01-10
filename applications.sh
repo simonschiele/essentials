@@ -51,3 +51,6 @@ export PAGER
 # shorties
 alias p='ps aux | grep -i'
 
+# sudo fix
+alias sudo='sudo '
+

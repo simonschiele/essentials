@@ -1,188 +1,5 @@
 #!/bin/bash
 
-# {{{ compress()
-
-compress() {
-    local OLDOPTIND=$OPTIND 
-    local HELP=false
-    local DATE=false
-    local VERBOSE=''
-    local ERROR='' 
-    
-    while getopts ":hdv" opt ; do
-        case $opt in
-            h)
-                HELP=true
-                ;;
-            d)
-                DATE=true
-                ;;
-            v)
-                VERBOSE=true
-                ;;
-            \?)
-                ERROR="Unknown Flag: -$OPTARG"
-                ;;
-        esac
-    done
-    shift $((OPTIND-1))
-    OPTIND=$OLDOPTIND
-   
-    ! ${HELP} && [ -z "${ERROR}" ] && ([ -z "${1}" ] || [ -z "${2}" ]) && \
-        ERROR="Please give at least a type of archive and what to compress"
-
-    $HELP || [ -n "${ERROR}" ] && \
-        echo "${FUNCNAME} [-h] [-d] <rar|zip|file.tar.gz> <dir/> [<data.txt|data2/>]"
-    
-    [ -n "$ERROR" ] && echo ${ERROR} && return 1
-    $HELP && return 0
-
-        ( [ -n "${ERROR}" ] && return 1 || return 0 )
-   
-    local target="${1}"
-    local content="${2}"
-    shift
-    
-    local archivetype="${target##*.}" 
-    local change_dir=false
-    
-    if [ "$( basename ${content} )" == "." ]
-    then
-        content=$( basename "$( pwd )" | sed 's|\ |\\ |g' )
-        change_dir=true
-    else
-        content="$@"
-    fi
-
-    [ $change_dir ] && cd ..
-
-    local status=true
-    case "${archivetype,,}" in
-        rar)
-            archivetype="rar"
-            local cmd="rar a -ol -r -ow -idc $( ! [ ${VERBOSE} ] && echo '-inul' ) --"
-            ;;
-        zip)
-            archivetype="zip"
-            local cmd="zip -r -y $( ! [ ${VERBOSE} ] && echo '-q' )"
-            ;;
-        bzip2|bz2)
-            archivetype="tar.bz2"
-            local cmd="tar cjf${VERBOSE:+v}"
-            ;;
-        tar|gz|targz|tgz)
-            archivetype="tar.gz"
-            local cmd="tar czf${VERBOSE:+v}"
-            ;;
-        *)
-            echo "Archivformat '${archivetype}' is not supported" && status=false
-            ;;
-    esac
-    
-    if [ "${archivetype}" == "${target}" ] || ! ( echo "$target" | grep -q "\." )
-    then
-        [ -n "${2}" ] && echo "Autonaming is only supported if you compress only one file or directory" && return 1
-        local cleancontent=$( basename ${content} | sed -e 's|^\.|dot.|g' )
-        target="${cleancontent%.*}.${archivetype}"
-    fi
-    
-    $status && $cmd $target $content
-    
-    [ $change_dir ] && cd "${OLDPWD}"
-
-    return $( $status )
-}
-
-# }}}
-
-# {{{ worldclock()
-
-worldclock() { 
-    zones="America/Los_Angeles America/Chicago America/Denver America/New_York Iceland Europe/London"
-    zones="${zones} Europe/Paris Europe/Berlin Europe/Moscow Asia/Hong_Kong Australia/Sydney"
-
-    for tz in $zones 
-    do 
-        local tz_short=$( echo ${tz} | cut -f'2' -d'/' )
-        echo -n -e "${tz_short}\t"
-        [[ ${#tz_short} -lt 8 ]] && echo -n -e "\t"
-        TZ=${tz} date
-    done
-    unset tz zones
-}
-
-# }}}
-
-# {{{ debian.packages_custom_get()
-
-debian.packages_custom_get() {
-    local listtype="${1}.list"
-    local pkglist="${HOME}/.packages/${listtype}"
-
-    if ! [ -e $pkglist ] || [ -z "${@}" ]
-    then
-        echo "Unknown Systemtype '$pkglist'"
-        return 1
-    fi
-    
-    local lists="$listtype $(grep ^[\.] $pkglist | sed 's|^[\.]\ *||g')"
-    lists=$( echo $lists | sed "s|\([A-Za-z0-9]*\.list\)|${HOME}/.packages/\1|g" )
-
-    sed -e '/^\ *$/d' -e '/^\ *#/d' -e '/^[\.]/d' $lists | cut -d':' -f'2-' | xargs
-}
-
-# }}}
-
-# {{{ scan.*
-
-alias scan.wlans='/sbin/iwlist scanning 2>/dev/null | grep -e "Cell" -e "Channel:" -e "Encryption" -e "ESSID" -e "WPA" | sed "s|Cell|\nCell|g"'
-
-function scan.hosts() { 
-    local routing_interface=$( LANG=C /sbin/route -n | grep "^[0-9 :\.]\+ U .*[a-z]\+[0-9]\+" | head -n 1 )
-    local routing_interface=${routing_interface##* }
-    local network="$( LANG=C /sbin/ifconfig ${routing_interface} | grep -o 'inet addr[^ ]*' | grep -o '[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.' )0/24"
-    fping -q -a -g ${network} | while read ip ; do 
-        echo -ne "${ip}\t"
-        echo -e "$( host -W 1 ${ip} | grep -o '[^ ]*.$' | sed 's|\.$||g' )"
-    done 
-}
-
-# }}} 
-
-# {{{ convert2()
-
-convert2() {
-    ext=${1} ; shift ; for file ; do echo -n ; [ -e "$file" ] && ( echo -e "\n\n[CONVERTING] ${file} ==> ${file%.*}.${ext}" && ffmpeg -loglevel error -i "${file}" -strict experimental "${file%.*}.${ext}" && echo rm -i "${file}" ) || echo "[ERROR] File not found: ${file}" ; done
-}
-
-# }}}
-
-# {{{ keyboard_kitt()
-
-function keyboard_kitt() {
-	# copyright 2007 - 2010 Christopher Bratusek
-	setleds -L -num;
-	setleds -L -caps;
-	setleds -L -scroll;
-	while :; do
-		setleds -L +num;
-		sleep 0.2;
-		setleds -L -num;
-		setleds -L +caps;
-		sleep 0.2;
-		setleds -L -caps;
-		setleds -L +scroll;
-		sleep 0.2;
-		setleds -L -scroll;
-		setleds -L +caps;
-		sleep 0.2;
-		setleds -L -caps;
-	done
-	resetleds
-}
-
-# }}}
-
 # {{{ confirm()
 
 function confirm.whiptail_yesno() {
@@ -238,48 +55,6 @@ function verify_su() {
 }
 
 # }}} 
-
-# {{{ debian.add_pubkey()
-
-function debian.add_pubkey() {
-    if ! verify_su ; then
-        echo "you need root/sudo permissions to call debian_add_pubkey" 1>&2 
-        return 1
-    elif [ -z "${1}" ] ; then
-        echo "Please call like:"
-        echo " > debian_add_pubkey path/to/file.key" 
-        echo "or"
-        echo " > debian_add_pubkey 07DC563D1F41B907" 
-    elif [ -e ${1} ] ; then
-        echo "import via keyfile not implemented yet" 1>&2 
-        return 1
-    else
-        if ( sudo gpg --keyserver pgpkeys.mit.edu --recv-key ${1} ) && ( sudo gpg -a --export ${1} | sudo apt-key add - ) ; then
-            return 0
-        else
-            return 1
-        fi
-    fi
-}
-
-# }}} 
-
-# {{{ debian.security()
-
-function debian.security() { 
-    wget -q -O- https://www.debian.org/security/dsa \
-        | xml2 \
-        | grep -o -e "item/title=.*$" -e "item/dc:date=.*$" -e "item/link=.*$" \
-        | tac \
-        | cut -f'2-' -d'=' \
-        | sed -e ':a;N;$!ba;s/\n/ /g' -e 's/\(20[0-9]\{2\}-\)/\n\1/g' \
-        | awk {'print $1" "$4" ("$2")"'} \
-        | sed "s|^|\ \ $( echo -e ${ICON[fail]})\ \ |g" \
-        | tac \
-        | head -n ${1:-6}
-}
-
-# }}}
 
 # {{{ web.google()
 
@@ -532,7 +307,169 @@ function good_morning() {
 
 # }}}
 
-# {{{ no.sleep()
+# {{{ date.* + date/time stuff
+
+worldclock() { 
+    zones="America/Los_Angeles America/Chicago America/Denver America/New_York Iceland Europe/London"
+    zones="${zones} Europe/Paris Europe/Berlin Europe/Moscow Asia/Hong_Kong Australia/Sydney"
+
+    for tz in $zones 
+    do 
+        local tz_short=$( echo ${tz} | cut -f'2' -d'/' )
+        echo -n -e "${tz_short}\t"
+        [[ ${#tz_short} -lt 8 ]] && echo -n -e "\t"
+        TZ=${tz} date
+    done
+    unset tz zones
+}
+
+alias date.format='date --help | sed -n "/^FORMAT/,/%Z/p"'
+alias date.timestamp='date +%s'
+alias date.week='date +%V'
+alias date.YY-mm-dd='date "+%Y-%m-%d"'
+alias date.YY-mm-dd_HH_MM='date "+%Y-%m-%d_%H-%M"'
+alias date.worldclock=worldclock
+alias date.stopwatch=stopwatch
+alias stopwatch='time read -n 1'
+
+# }}}
+
+# {{{ debian.*
+
+function debian.add_pubkey() {
+    if ! verify_su ; then
+        echo "you need root/sudo permissions to call debian_add_pubkey" 1>&2 
+        return 1
+    elif [ -z "${1}" ] ; then
+        echo "Please call like:"
+        echo " > debian_add_pubkey path/to/file.key" 
+        echo "or"
+        echo " > debian_add_pubkey 07DC563D1F41B907" 
+    elif [ -e ${1} ] ; then
+        echo "import via keyfile not implemented yet" 1>&2 
+        return 1
+    else
+        if ( sudo gpg --keyserver pgpkeys.mit.edu --recv-key ${1} ) && ( sudo gpg -a --export ${1} | sudo apt-key add - ) ; then
+            return 0
+        else
+            return 1
+        fi
+    fi
+}
+
+function debian.security() { 
+    wget -q -O- https://www.debian.org/security/dsa \
+        | xml2 \
+        | grep -o -e "item/title=.*$" -e "item/dc:date=.*$" -e "item/link=.*$" \
+        | tac \
+        | cut -f'2-' -d'=' \
+        | sed -e ':a;N;$!ba;s/\n/ /g' -e 's/\(20[0-9]\{2\}-\)/\n\1/g' \
+        | awk {'print $1" "$4" ("$2")"'} \
+        | sed "s|^|\ \ $( echo -e ${ICON[fail]})\ \ |g" \
+        | tac \
+        | head -n ${1:-6}
+}
+
+function debian.packages_custom_get() {
+    local listtype="${1}.list"
+    local pkglist="${HOME}/.packages/${listtype}"
+
+    if ! [ -e $pkglist ] || [ -z "${@}" ]
+    then
+        echo "Unknown Systemtype '$pkglist'"
+        return 1
+    fi
+    
+    local lists="$listtype $(grep ^[\.] $pkglist | sed 's|^[\.]\ *||g')"
+    lists=$( echo $lists | sed "s|\([A-Za-z0-9]*\.list\)|${HOME}/.packages/\1|g" )
+
+    sed -e '/^\ *$/d' -e '/^\ *#/d' -e '/^[\.]/d' $lists | cut -d':' -f'2-' | xargs
+}
+
+alias debian.version='lsb_release -a'
+alias debian.bugs='bts'
+alias debian.packages_custom='debian.packages_custom_get $(grep ^system_type ~/.system.conf | cut -f"2-" -d"=" | sed "s|[\"]||g")'
+alias debian.packages_by_size='dpkg-query -W --showformat="\${Installed-Size;10}\t\${Package}\n" | sort -k1,1n'
+alias debian.package_configfiles='dpkg-query -f "\n${Package} \n${Conffiles}\n" -W'
+
+# }}}
+
+# {{{ scan.*
+
+alias scan.wlans='/sbin/iwlist scanning 2>/dev/null | grep -e "Cell" -e "Channel:" -e "Encryption" -e "ESSID" -e "WPA" | sed "s|Cell|\nCell|g"'
+
+function scan.hosts() { 
+    local routing_interface=$( LANG=C /sbin/route -n | grep "^[0-9 :\.]\+ U .*[a-z]\+[0-9]\+" | head -n 1 )
+    local routing_interface=${routing_interface##* }
+    local network="$( LANG=C /sbin/ifconfig ${routing_interface} | grep -o 'inet addr[^ ]*' | grep -o '[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.' )0/24"
+    fping -q -a -g ${network} | while read ip ; do 
+        echo -ne "${ip}\t"
+        echo -e "$( host -W 1 ${ip} | grep -o '[^ ]*.$' | sed 's|\.$||g' )"
+    done 
+}
+
+# }}} 
+
+# {{{ save.* (battery stuff)
+
+function save.battery_lifetime() {
+    echo 15 > /sys/devices/platform/smapi/BAT0/start_charge_thresh
+    echo 85 > /sys/devices/platform/smapi/BAT0/stop_charge_thresh
+}
+
+function save.battery() {
+    if ! [ $( id -u ) -eq 0 ] ; then 
+        echo "please use root or sudo -s" >&2
+        return 1
+    fi
+    
+    es_debug " * setting gov powersave for all $( grep ^process /proc/cpuinfo | wc -l ) cores"
+    ${ESSENTIALS_DEBUG} && echo -n "[LOG]   " >&2
+    seq 0 $( grep ^process /proc/cpuinfo | tail -n 1 | grep -o "[0-9]" ) | while read i ; do
+        ${ESSENTIALS_DEBUG} && echo -n " ${i}" >&2
+        cpufreq-set -c ${i} -g powersave
+    done
+    ${ESSENTIALS_DEBUG} && echo "" >&2
+    
+    es_debug " * turn off NMI watchdog"
+    echo '0' > '/proc/sys/kernel/nmi_watchdog'
+   
+    es_debug " * auto suspend bluetooth"
+    echo 'auto' > /sys/bus/usb/devices/1-1.4/power/control
+
+    es_debug " * auto suspend umts modem"
+    echo 'auto' > /sys/bus/usb/devices/2-1.4/power/control
+
+    es_debug " * deactivate WOL for eth0"
+    ethtool -s eth0 wol d
+  
+    es_debug " * enable audio codec power management"
+    echo '1' > /sys/module/snd_hda_intel/parameters/power_save
+
+    es_debug " * setting VM writeback timeout to 1500"
+    echo '1500' > /proc/sys/vm/dirty_writeback_centisecs
+
+    es_debug " * wireless power saving for wlan0"
+    iw dev wlan0 set power_save on
+    
+    es_debug " * activating sata link power managenment on host0-host$(( $( ls /sys/class/scsi_host/host*/link_power_management_policy | wc -l ) - 1 ))"
+    seq 0 $(( $( ls /sys/class/scsi_host/host*/link_power_management_policy | wc -l ) - 1 )) | while read i ; do
+        echo 'min_power' > /sys/class/scsi_host/host${i}/link_power_management_policy
+    done
+
+    es_debug " * enabling power control for pci bus"
+    for f in ls /sys/bus/pci/devices/*/power/control ; do echo 'auto' > "$f" ; done
+
+    es_debug " * enabling power control for usb bus"
+    for f in ls /sys/bus/usb/devices/*/power/control ; do echo 'on' > "$f" ; done
+    for f in ls /sys/bus/usb/devices/*/power/control ; do echo 'auto' > "$f" ; done
+}
+
+alias show.battery='upower -d | grep -e state -e percentage -e time | sort -u | tr "\n" " " | sed "s|^[^0-9]*\([0-9]*%\)[^:]*:\ *\([^\ ]*\)[^0-9\.]*\([0-9\.]*\)[^0-9]*$|(\1, \2, \3h)|g"; echo'
+
+# }}}
+
+# {{{ no.*
 
 function no.sleep() {
     pkill -f screensaver
@@ -542,7 +479,7 @@ function no.sleep() {
 
 # }}} 
 
-# {{{ show.*()
+# {{{ show.*
 
 function show.tlds() {
     [ ! -d ${HOME}/.cache/bash/ ] && mkdir -p ${HOME}/.cache/bash/
@@ -633,115 +570,39 @@ function show() {
     fi
 }
 
+alias show.ip_remote='addr=$( dig +short myip.opendns.com @resolver1.opendns.com | grep.ip ) ; echo remote:${addr:-$( wget -q -O- icanhazip.com | grep.ip )}'
+alias show.ip_local='LANG=C /sbin/ifconfig | grep -o -e "^[^\ ]*" -e "^\ *inet addr:\([0-9]\{1,3\}\.\)\{3\}[0-9]\{1,3\}" | tr "\n" " " | sed -e "s|\ *inet addr||g" -e "s|\ |\n|g"' #-e "s|:\(.*\)$|: $( color yellow )\1$( color none )|g"'
+alias show.ip='show.ip_local | sed "s|:\(.*\)$|: $( color yellow )\1$( color none )|g" ; show.ip_remote | sed "s|:\(.*\)$|: $( color green )\1$( color none )|g"'
+for tmpname in $( /sbin/ifconfig | grep -o "^[^ ]*" ) ; do
+    alias show.${tmpname}="$( echo /sbin/ifconfig ${tmpname} )"
+done
+
+alias show.io='echo -n d | nmon -s 1'
+alias show.tcp='sudo netstat -atp'
+alias show.tcp_stats='sudo netstat -st'
+alias show.udp='sudo netstat -aup'
+alias show.udp_stats='sudo netstat -su'
+alias show.window_class='xprop | grep CLASS'
+alias show.resolution='LANG=C xrandr -q | grep -o "current [0-9]\{3,4\} x [0-9]\{3,4\}" | sed -e "s|current ||g" -e "s|\ ||g"'
+alias show.certs='openssl s_client -connect ' 
+
 # }}}
+
+# {{{ is.*
 
 function is.systemd() { 
     sudo LANG=C lsof -a -p 1 -d txt | grep -q "^systems\ *1\ *"
     return $?
 }
 
-function git.subupd() {
-    git submodule foreach git fetch origin --tags && git pull && git submodule update --init --recursive
+function is.init_five() {
+    find /etc/rc[1-5].d/ ! -type d -executable -exec basename {} \; | sed 's/^[SK][0-9][0-9]//g' | sort -u | xargs'
 }
 
-function git.is_submodule() {
-     (cd "$(git rev-parse --show-toplevel)/.." && git rev-parse --is-inside-work-tree) | grep -q true
-}
+# }}} 
 
-function git.dirty_ignore() {
-    local dot_git=$( git rev-parse --is-inside-work-tree >/dev/null 2>&1 && git rev-parse --git-dir 2>/dev/null )
-    
-    if [ -z "$dot_git" ] ; then
-        echo "Couldn't find repo" >&2
-        return 1
-    fi
-     
-    #"config" -> "ignore = dirty"
-}
+# {{{ find.*
 
-# {{{ laptop stuff
-
-function save.battery_lifetime() {
-    echo 15 > /sys/devices/platform/smapi/BAT0/start_charge_thresh
-    echo 85 > /sys/devices/platform/smapi/BAT0/stop_charge_thresh
-}
-
-function save.battery() {
-    if ! [ $( id -u ) -eq 0 ] ; then 
-        echo "please use root or sudo -s" >&2
-        return 1
-    fi
-    
-    es_debug " * setting gov powersave for all $( grep ^process /proc/cpuinfo | wc -l ) cores"
-    ${ESSENTIALS_DEBUG} && echo -n "[LOG]   " >&2
-    seq 0 $( grep ^process /proc/cpuinfo | tail -n 1 | grep -o "[0-9]" ) | while read i ; do
-        ${ESSENTIALS_DEBUG} && echo -n " ${i}" >&2
-        cpufreq-set -c ${i} -g powersave
-    done
-    ${ESSENTIALS_DEBUG} && echo "" >&2
-    
-    es_debug " * turn off NMI watchdog"
-    echo '0' > '/proc/sys/kernel/nmi_watchdog'
-   
-    es_debug " * auto suspend bluetooth"
-    echo 'auto' > /sys/bus/usb/devices/1-1.4/power/control
-
-    es_debug " * auto suspend umts modem"
-    echo 'auto' > /sys/bus/usb/devices/2-1.4/power/control
-
-    es_debug " * deactivate WOL for eth0"
-    ethtool -s eth0 wol d
-  
-    es_debug " * enable audio codec power management"
-    echo '1' > /sys/module/snd_hda_intel/parameters/power_save
-
-    es_debug " * setting VM writeback timeout to 1500"
-    echo '1500' > /proc/sys/vm/dirty_writeback_centisecs
-
-    es_debug " * wireless power saving for wlan0"
-    iw dev wlan0 set power_save on
-    
-    es_debug " * activating sata link power managenment on host0-host$(( $( ls /sys/class/scsi_host/host*/link_power_management_policy | wc -l ) - 1 ))"
-    seq 0 $(( $( ls /sys/class/scsi_host/host*/link_power_management_policy | wc -l ) - 1 )) | while read i ; do
-        echo 'min_power' > /sys/class/scsi_host/host${i}/link_power_management_policy
-    done
-
-    es_debug " * enabling power control for pci bus"
-    for f in ls /sys/bus/pci/devices/*/power/control ; do echo 'auto' > "$f" ; done
-
-    es_debug " * enabling power control for usb bus"
-    for f in ls /sys/bus/usb/devices/*/power/control ; do echo 'on' > "$f" ; done
-    for f in ls /sys/bus/usb/devices/*/power/control ; do echo 'auto' > "$f" ; done
-}
-
-alias show.battery='upower -d | grep -e state -e percentage -e time | sort -u | tr "\n" " " | sed "s|^[^0-9]*\([0-9]*%\)[^:]*:\ *\([^\ ]*\)[^0-9\.]*\([0-9\.]*\)[^0-9]*$|(\1, \2, \3h)|g"; echo'
-
-# }}}
-
-# sudo stuff
-alias sudo='sudo '
-alias sudo.that='eval "sudo $(fc -ln -1)"'
-alias sudo.password_disable='sudo grep -iq "^${SUDO_USER:-${USER}}.*NOPASSWD.*ALL.*$" /etc/sudoers && echo "entry already in /etc/sudoers" >&2 || sudo bash -c "echo -e \"${SUDO_USER:-${USER}}\tALL = NOPASSWD:  ALL\n\" >> /etc/sudoers"'
-alias sudo.password_enable='sudo grep -iq "^${SUDO_USER:-${USER}}.*NOPASSWD.*ALL.*$" /etc/sudoers && sudo sed -i "/^${SUDO_USER:-${USER}}.*NOPASSWD.*ALL.*$/d" /etc/sudoers || echo "entry not in /etc/sudoers" >&2'
-
-
-# system
-alias create.system_user='sudo adduser --no-create-home --disabled-login --shell /bin/false'
-alias observe.pid='strace -T -f -p'
-
-# package and system-config
-alias debian.version='lsb_release -a'
-alias debian.bugs='bts'
-alias debian.packages_custom='debian.packages_custom_get $(grep ^system_type ~/.system.conf | cut -f"2-" -d"=" | sed "s|[\"]||g")'
-alias debian.packages_by_size='dpkg-query -W --showformat="\${Installed-Size;10}\t\${Package}\n" | sort -k1,1n'
-alias debian.package_configfiles='dpkg-query -f "\n${Package} \n${Conffiles}\n" -W'
-
-# logs
-alias log.dmesg='dmesg -T --color=auto'
-alias log.pidgin='find ~/.purple/logs/ -type f -mtime -5 | xargs tail -n 5'
-alias log.NetworkManager='sudo journalctl -u NetworkManager'
-
-# find
 alias find.dir='find . -type d'
 alias find.files='find . -type f'
 alias find.links='find . -type l'
@@ -764,43 +625,99 @@ function find.tree() {
     find "${dir:-.}" ${dir_find} -print | sed -e 's;[^/]*/;|__;g;s;__|; |;g'
 }
 
-# date/time stuff
-alias date.format='date --help | sed -n "/^FORMAT/,/%Z/p"'
-alias date.timestamp='date +%s'
-alias date.week='date +%V'
-alias date.YY-mm-dd='date "+%Y-%m-%d"'
-alias date.YY-mm-dd_HH_MM='date "+%Y-%m-%d_%H-%M"'
-alias date.world=worldclock
-alias date.stopwatch=stopwatch
-alias stopwatch='time read -n 1'
+alias find.videos="find . ! -type d $( echo ${EXTENSIONS_VIDEO}\" | sed -e "s|,|\"\ \-o\ \-iname \"*|g" -e "s|^|\ \-iname \"*|g" )"
+alias find.images="find . ! -type d $( echo ${EXTENSIONS_IMAGES}\" | sed -e 's|,|\"\ \-o\ \-iname \"*|g' -e 's|^|\ \-iname \"*|g' )"
+alias find.audio="find . ! -type d $( echo ${EXTENSIONS_AUDIO}\" | sed -e 's|,|\"\ \-o\ \-iname \"*|g' -e 's|^|\ \-iname \"*|g' )"
+alias find.documents="find . ! -type d $( echo ${EXTENSIONS_DOCUMENTS}\" | sed -e 's|,|\"\ \-o\ \-iname \"*|g' -e 's|^|\ \-iname \"*|g' )"
+alias find.archives="find . ! -type d $( echo ${EXTENSIONS_ARCHIVES}\" | sed -e 's|,|\"\ \-o\ \-iname \"*|g' -e 's|^|\ \-iname \"*|g' )"
 
-# compression
-alias zip.dir='compress zip'
-alias rar.dir='compress rar'
-alias tar.dir='compress targz'
+# }}}
 
-# mirror
-alias mirror.complete='wget --random-wait -r -p -e robots=off -U mozilla'           # mirror website with everything
-alias mirror.images='wget -r -l1 --no-parent -nH -nd -P/tmp -A".gif,.jpg"'     # download all images from a site
+# {{{ git.* 
 
-# filter
+function git.subupd() {
+    git submodule foreach git fetch origin --tags && git pull && git submodule update --init --recursive
+}
+
+function git.is_submodule() {
+     (cd "$(git rev-parse --show-toplevel)/.." && git rev-parse --is-inside-work-tree) | grep -q true
+}
+
+function git.dirty_ignore() {
+    local dot_git=$( git rev-parse --is-inside-work-tree >/dev/null 2>&1 && git rev-parse --git-dir 2>/dev/null )
+    
+    if [ -z "$dot_git" ] ; then
+        echo "Couldn't find repo" >&2
+        return 1
+    fi
+     
+    #"config" -> "ignore = dirty"
+}
+
+# }}}
+
+# {{{ sudo.*
+
+alias sudo.that='eval "sudo $(fc -ln -1)"'
+alias sudo.password_disable='sudo grep -iq "^${SUDO_USER:-${USER}}.*NOPASSWD.*ALL.*$" /etc/sudoers && echo "entry already in /etc/sudoers" >&2 || sudo bash -c "echo -e \"${SUDO_USER:-${USER}}\tALL = NOPASSWD:  ALL\n\" >> /etc/sudoers"'
+alias sudo.password_enable='sudo grep -iq "^${SUDO_USER:-${USER}}.*NOPASSWD.*ALL.*$" /etc/sudoers && sudo sed -i "/^${SUDO_USER:-${USER}}.*NOPASSWD.*ALL.*$/d" /etc/sudoers || echo "entry not in /etc/sudoers" >&2'
+
+# }}}
+
+# {{{ log.*
+
+alias log.dmesg='dmesg -T --color=auto'
+alias log.pidgin='find ~/.purple/logs/ -type f -mtime -5 | xargs tail -n 5'
+alias log.NetworkManager='sudo journalctl -u NetworkManager'
+
+# }}}
+
+# {{{ grep.*
+
 alias grep.ip='grep -o "\([0-9]\{1,3\}\.\)\{3\}[0-9]\{1,3\}"'
 alias grep.url="sed -e \"s|'|\\\"|g\" -e \"s|src|href|g\" | sed -e \"s|href|\nhref|g\" | grep -i -e \"href[ ]*=\" | sed 's/.*href[ ]*=[ ]*[\"]*\(.*\)[\"\ ].*/\1/g' | cut -f'1' -d'\"'"
 alias grep.year='grep -o "[1-2][0-9]\{3\}"'
-alias highlite='grep --color=yes -e ^ -e'
+alias grep.highlite+passthru='grep --color=yes -e ^ -e'
 
-# random
+# }}}
+
+# {{{ random.*
+
 alias random.mac='openssl rand -hex 6 | sed "s/\(..\)/\1:/g; s/.$//"'
 alias random.ip='nmap -iR 1 -sL -n | grep.ip -o'
 alias random.lotto='shuf -i 1-49 -n 6 | sort -n | xargs'
 random.hex() { openssl rand -hex ${1:-8} ; }
 random.integer() { from=1 ; to=${1:-100} ; [[ -n "${2}" ]] && from=${1} && to=${2} ; echo "f:${from} t:${to}"; echo "$(( RANDOM % ${2:-100} + ${1:-1} ))" ; }
 random.password() { openssl rand -base64 ${1:-8} ; }
-# random.password+phpass() { local pass="${@:-$( random.password 12 )}" ; python -c "from passlib.hash import phpass ; print phpass.encrypt('${pass}')" }
 
-# media 
-alias mplayer.left='mplayer -xineramascreen 0'
-alias mplayer.right='mplayer -xineramascreen 1'
+# }}}
+
+# {{{ wget.*
+
+function wget.stdout() {
+    wget -O- -q ${@} || wget -O- -S ${@}
+}
+
+# mirror website with everything
+alias wget.mirror_complete='wget --random-wait -r -p -e robots=off -U mozilla'
+
+# download all images from a site
+alias wget.mirror_images='wget -r -l1 --no-parent -nH -nd -P/tmp -A".gif,.jpg"'
+
+# }}}
+
+# {{{ sed.*
+
+alias sed.remove_special_chars='sed "s,\x1B\[[0-9;]*[a-zA-Z],,g"'
+alias sed.strip_html='sed -e "s|<[^>]*>||g"'
+alias sed.htmlencode_umlaute='sed -e "s|ü|\&uuml;|g" -e "s|Ü|\&Uuml;|g" -e "s|ä|\&auml;|g" -e "s|Ä|\&Auml;|g" -e "s|ö|\&ouml;|g" -e "s|Ö|\&Ouml;|g" -e "s|ß|\&szlig;|g"' # todo: untested
+alias sed.strip_doubleslash='sed "s|[/]\+|/|g"'
+
+# }}}
+
+# system
+alias create.system_user='sudo adduser --no-create-home --disabled-login --shell /bin/false'
+alias observe.pid='strace -T -f -p'
 
 # sound
 alias alsa.silent='for mix in PCM MASTER Master ; do amixer -q sset $mix 0 2>/dev/null ; done'
@@ -813,35 +730,14 @@ alias synergyc.custom='[ -e ~/.synergy/$( hostname -s ).conf ] && synergyc --dae
 alias synergy.start='kill.synergy ; synergys.custom ; synergyc.custom'
 alias kill.synergy='killall -9 synergyc synergys 2>/dev/null ; true'
 
-# show.*
-alias show.ip_remote='addr=$( dig +short myip.opendns.com @resolver1.opendns.com | grep.ip ) ; echo remote:${addr:-$( wget -q -O- icanhazip.com | grep.ip )}'
-alias show.ip_local='LANG=C /sbin/ifconfig | grep -o -e "^[^\ ]*" -e "^\ *inet addr:\([0-9]\{1,3\}\.\)\{3\}[0-9]\{1,3\}" | tr "\n" " " | sed -e "s|\ *inet addr||g" -e "s|\ |\n|g"' #-e "s|:\(.*\)$|: $( color yellow )\1$( color none )|g"'
-alias show.ip='show.ip_local | sed "s|:\(.*\)$|: $( color yellow )\1$( color none )|g" ; show.ip_remote | sed "s|:\(.*\)$|: $( color green )\1$( color none )|g"'
-for tmpname in $( /sbin/ifconfig | grep -o "^[^ ]*" ) ; do
-    alias show.${tmpname}="$( echo /sbin/ifconfig ${tmpname} )"
-done
-
-alias show.io='echo -n d | nmon -s 1'
-alias show.tcp='sudo netstat -atp'
-alias show.tcp_stats='sudo netstat -st'
-alias show.udp='sudo netstat -aup'
-alias show.udp_stats='sudo netstat -su'
-alias show.window_class='xprop | grep CLASS'
-alias show.resolution='LANG=C xrandr -q | grep -o "current [0-9]\{3,4\} x [0-9]\{3,4\}" | sed -e "s|current ||g" -e "s|\ ||g"'
-alias show.certs='openssl s_client -connect ' 
-
 # tools
 alias speedtest='wget -O- http://cachefly.cachefly.net/200mb.test > /dev/null'
 alias calculator='bc -l'
 alias calc='calculator'
 
-alias sed.strip_html='sed -e "s|<[^>]*>||g"'
-alias sed.htmlencode_umlaute='sed -e "s|ü|\&uuml;|g" -e "s|Ü|\&Uuml;|g" -e "s|ä|\&auml;|g" -e "s|Ä|\&Auml;|g" -e "s|ö|\&ouml;|g" -e "s|Ö|\&Ouml;|g" -e "s|ß|\&szlig;|g"' # todo: untested
-alias sed.strip_doubleslash='sed "s|[/]\+|/|g"'
-
 alias http.response='lwp-request -ds'
-alias show.keycodes='xev | grep -e keycode -e button'
 alias patch.from_diff='patch -Np0 -i'
+alias show.keycodes='xev | grep -e keycode -e button'
 alias show.usb_sticks='for dev in $( udisks --dump | grep device-file | sed "s|^.*\:\ *\(.*\)|\1|g" ) ; do udisks --show-info ${dev} | grep -qi "removable.*1" && echo ${dev} ; done ; true'
 alias btc.worldwide='wget -q -O- https://bitpay.com/api/rates | json_pp'
 alias btc='echo -e "€: $( btc.worldwide | grep -C2 Euro | grep -o [0-9\.]* )" ; echo "$: $( btc.worldwide | grep -C2 USD | grep -o [0-9\.]* )"'
@@ -851,21 +747,10 @@ alias kvm.hd='kvm -m 1024 -boot c -hda'
 alias kvm.grml+hd='iso=$( iso.grml ) ; kvm -cdrom ${iso} -m 1024 -boot d -hda'
 alias create.qcow='next=$( printf "%02d\n" "$(( $( ls image_[0-9]*.img 2>/dev/null | grep -o [0-9]* | sort -n | tail -n1 ) + 1 ))" ) ; qemu-img create -f qcow2 -o preallocation=metadata image_${next}.img'
 
-# host/setup specific
-if ( grep -iq work /etc/hostname ) ; then
-    alias scp='scp -l 30000'
-    alias windows.connect='rdesktop -kde -a 16 -g 1280x1024 -u sschiele 192.168.80.55'
-    alias wakeonlan.windows='wakeonlan 00:1C:C0:8D:0C:73'
-elif [ $( whereami ) = 'home' ] ; then
-    alias wakeonlan.mediacenter='wakeonlan 00:01:2e:27:62:87'
-    alias wakeonlan.cstation='wakeonlan 00:19:66:cf:82:04'
-    alias wakeonlan.cbase='wakeonlan 00:50:8d:9c:3f:6e'
-fi
-
-if ( grep -iq 'minit' /proc/cmdline ) ; then
-    alias reboot='sudo minit-shutdown -r &'
-    alias halt='sudo minit-shutdown -h'
-fi
+alias wakeonlan.windows='wakeonlan 00:1C:C0:8D:0C:73'
+alias wakeonlan.mediacenter='wakeonlan 00:01:2e:27:62:87'
+alias wakeonlan.cstation='wakeonlan 00:19:66:cf:82:04'
+alias wakeonlan.cbase='wakeonlan 00:50:8d:9c:3f:6e'
 
 if ( which recordmydesktop >/dev/null ) ; then
     alias screendump='recordmydesktop -o screendump_$( date +%s ).ogv'
@@ -884,39 +769,11 @@ alias record.screendump=screendump
 alias record.screenvideo=screendump
 alias record.screenshot=screenshot
 
-# sorgenkinder
-alias show.open_ports='echo -e "User:      Command:   Port:\n----------------------------" ; sudo "lsof -i 4 -P -n | grep -i listen | awk {\"print \$3, \$1, \$9\"} | sed \"s| [a-z0-9\.\*]*:| |\" | sort -k 3 -n | xargs printf \"%-10s %-10s %-10s\n\"" | uniq'
-alias log.authlog="sudo grep -e \"^\$( LANG=C date -d'now -24 hours' +'%b %e' )\" -e \"^\$( LANG=C date +'%b %e' )\" /var/log/auth.log | grep.ip | sort -n | uniq -c | sort -n | grep -v \"\$( host -4 enkheim.psaux.de | grep.ip | head -n1 )\" | tac | head -n 10"
-alias hooks.run="echo ; systemtype=\$( grep ^systemtype ~/.system.conf | cut -f2 -d'=' | sed -e 's|[\"\ ]||g' -e \"s|'||g\" ) ; for exe in \$( find ~/.hooks/ ! -type d -executable | xargs grep -l \"^hook_systemtype.*\${systemtype}\" | xargs grep -l '^hook_optional=false' ) ; do exec_with_sudo='' ; grep -q 'hook_sudo=.*true.*' \"\${exe}\" && exec_with_sudo='sudo ' || grep -q 'hook_sudo' \"\${exe}\" || exec_with_sudo='sudo ' ; cancel=\${cancel:-false} global_success=\${global_success:-true} \${exe} ; retval=\${?} ; echo ; if test \${retval} -eq 2 ; then echo -e \"CANCELING HOOKS\" >&2 ; break ; elif ! test \${retval} -eq 0 ; then global_success=false ; fi ; done ; \${global_success} || echo -e \"Some hooks could NOT get processed successfully!\n\" ; unset global_success systemtype retval ;"
-
-alias find.videos="find . ! -type d $( echo ${EXTENSIONS_VIDEO}\" | sed -e "s|,|\"\ \-o\ \-iname \"*|g" -e "s|^|\ \-iname \"*|g" )"
-alias find.images="find . ! -type d $( echo ${EXTENSIONS_IMAGES}\" | sed -e 's|,|\"\ \-o\ \-iname \"*|g' -e 's|^|\ \-iname \"*|g' )"
-alias find.audio="find . ! -type d $( echo ${EXTENSIONS_AUDIO}\" | sed -e 's|,|\"\ \-o\ \-iname \"*|g' -e 's|^|\ \-iname \"*|g' )"
-alias find.documents="find . ! -type d $( echo ${EXTENSIONS_DOCUMENTS}\" | sed -e 's|,|\"\ \-o\ \-iname \"*|g' -e 's|^|\ \-iname \"*|g' )"
-alias find.archives="find . ! -type d $( echo ${EXTENSIONS_ARCHIVES}\" | sed -e 's|,|\"\ \-o\ \-iname \"*|g' -e 's|^|\ \-iname \"*|g' )"
-
 alias permissions.normalize="find . -type f \! -perm -a+x -exec chmod 640 {} \; -o -type f -perm -a+x -exec chmod 750 {} \; -o -type d -exec chmod 750 {} \; ; chown \${SUDO_USER:-\$USER}: . -R"
 alias permissions.normalize_system="chown \${SUDO_USER:-\$USER}: ~/ -R ; find /home/* /root -maxdepth 0 -type d -exec chmod 700 {} \;"
 alias permissions.normalize_web="chown \${SUDO_USER:-\$USER}:www-data . -R ; find . -type f \! -perm -a+x -exec chmod 640 {} \; -o -type f -perm -a+x -exec chmod 750 {} \; -o -type d \( -iname 'log*' -o -iname 'cache' -o -iname 'templates_c' \) -exec chown www-data:\${SUDO_USER:-\$USER} {} -R \; -exec chmod 770 {} \; -o -type d -exec chmod 750 {} \;"
 
-alias show.init_five_activated='find /etc/rc[1-5].d/ ! -type d -executable -exec basename {} \; | sed 's/^[SK][0-9][0-9]//g' | sort -u | xargs'
 alias rm.dead_links='find . -type l -exec test ! -e {} \; -delete'
-
-alias sed.remove_special_chars='sed "s,\x1B\[[0-9;]*[a-zA-Z],,g"'
-
-# old stuff
-#alias route_via_wlan="for i in \`seq 1 10\` ; do route del default 2>/dev/null ; done ; route add default eth0 ; route add default wlan0 ; route add default gw \"\$( /sbin/ifconfig wlan0 | grep.ip | head -n 1 | cut -f'1-3' -d'.' ).1\""
-#alias 2audio="convert2 mp3"
-#alias youtube-mp3="clive -f best --exec=\"echo >&2; echo '[CONVERTING] %f ==> MP3' >&2 ; ffmpeg -loglevel error -i %f -strict experimental %f.mp3 && rm -f %f\""
-#alias youtube="clive -f best --exec=\"( echo %f | grep -qi -e 'webm$' -e 'webm.$' ) && ( echo >&2 ; echo '[CONVERTING] %f ==> MP4' >&2 ; ffmpeg -loglevel error -i %f -strict experimental %f.mp4 && rm -f %f )\""
-#alias image2pdf='convert -adjoin -page A4 *.jpeg multipage.pdf'				# convert images to a multi-page pdf
-#nrg2iso() { dd bs=1k if="$1" of="$2" skip=300 }
-
-#wget -q -O- http://www.di.fm/ | grep -o 'data-tunein-url="[^"]*"' | cut -f'2' -d'"'  
-
-function wget.stdout() {
-    wget -O- -q ${@} || wget -O- -S ${@}
-}
 
 unset tmpname
 
