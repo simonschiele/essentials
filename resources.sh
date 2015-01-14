@@ -362,3 +362,137 @@ export EXTENSIONS_AUDIO='flac,mp1,mp2,mp3,ogg,wav,aac,ac3,dts,m4a,mid,midi,mka,m
 export EXTENSIONS_DOCUMENTS='asc,rtf,txt,abw,zabw,bzabw,chm,pdf,doc,docx,docm,odm,odt,ods,ots,sdw,stw,wpd,wps,pxl,sxc,xlsx,xlsm,odg,odp,pps,ppsx,ppt,pptm,pptx,sda,sdd,sxd,dot,dotm,dotx,mobi,prc,epub,pdb,prc,tpz,azw,azw1,azw3,azw4,kf8,lit,fb2'
 export EXTENSIONS_ARCHIVES='7z,s7z,ace,arj,bz,bz2,bzip,bzip2,gz,gzip,lha,lzh,rar,r0,r00,tar,taz,tbz,tbz2,tgz,zip,rpm,deb'
 
+# {{{ confirm()
+
+function confirm.whiptail_yesno() {
+    whiptail --yesno "${1:-Are you sure you want to perform 'unknown action'?}" 10 60
+}
+
+function confirm.yesno() {
+    while read -p "${1:-Are you sure (Y/N)? }" -r -n 1 -s answer; do
+        if [[ $answer = [YyNn] ]]; then
+            [[ $answer = [Yy] ]] && ( echo ; return 0 )
+            [[ $answer = [Nn] ]] && ( echo ; return 1 )
+            break
+        fi
+    done
+}
+
+function confirm.keypress() {
+    local keypress
+    read -s -r -p "${1:-Press any key to continue...}" -n 1 keypress
+}
+
+# }}}
+
+# {{{ return.unicode()
+
+function return.unicode() {
+    if [ ${1} -gt 0 ] ; then
+        echo -e " ${COLOR[red]}${ICON[fail]}${COLOR[none]}"
+    else
+        echo -e " ${COLOR[green]}${ICON[success]}${COLOR[none]}"
+    fi
+
+    return ${1}
+}
+
+# }}}
+
+# {{{ verify_su()
+
+function verify_su() {
+    if [ "$( id -u )" == "0" ] ; then
+        return 0
+    elif ( sudo -n echo -n ) ; then
+        return 0
+    elif ( sudo echo -n ) ; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# }}}
+
+# {{{ echo.centered()
+
+function echo.centered() {
+    printf "%*s\n" $(( ${#1} + ( ${COLUMNS} - ${#1} ) / 2 )) "${1}"
+}
+
+# }}}
+
+# {{{ echo.header()
+
+function echo.header() {
+    echo -e "\n$( echo.centered "${@}" )\n"
+}
+
+# }}}
+
+# {{{ good_morning()
+
+function good_morning() {
+    for i in ${@} ; do
+        echo $i
+    done
+
+    local status=0
+    local has_root=false
+
+    clear
+    echo.header "${COLOR[white_bold]}Good Morning, ${SUDO_USER:-${USER^}}!${COLOR[none]}"
+    show.stats
+
+    if [ $( id -u ) -eq 0 ] ; then
+        has_root=true
+        sudo_cmd=""
+    elif ( sudo -n echo -n 2>/dev/null ) ; then
+        has_root=true
+        sudo_cmd="sudo"
+    fi
+
+    if ! ( ${has_root} ) ; then
+        echo -e "\n${COLOR[white_under]}${COLOR[white_bold]}sudo:${COLOR[none]}"
+        if ! ( sudo echo -n ) ; then
+            echo -e "\n${COLOR[red]}error${COLOR[none]}: couldn't unlock sudo\n" >&2
+            return 1
+        else
+            has_root=true
+            sudo_cmd="sudo"
+        fi
+    fi
+
+    echo -e "\n${COLOR[white_under]}${COLOR[white_bold]}Debian:${COLOR[none]}"
+    echo "version: $( lsb_release -ds 2>&1 )"
+
+    echo -n "updating packagelists: "
+    local out=$( ${sudo_cmd} apt-get update 2>&1 )
+    local ret=$?
+    if [ $ret -eq 0 ] ; then
+        echo -e "success ${COLOR[green]}${icon[ok]}${COLOR[none]}"
+    else
+        echo -e "failed ${COLOR[red]}${icon[fail]}${COLOR[none]}"
+        let status++
+    fi
+
+    echo -en "available updates: "
+    yes "no" | ${sudo_cmd} apt-get dist-upgrade 2>&1 | grep --color=never "upgraded.*installed.*remove.*upgraded"
+
+    echo -e "Latest Security Advisories: "
+    debian.security
+
+    echo -e "\n$( color white_under )$( color white_bold )Repos:$( color )"
+    update.repo git@psaux.de:dot.bin-ypsilon.git ~/.bin-ypsilon/ || let status++
+    update.repo git@psaux.de:dot.bin-private.git ~/.bin-private/ || let status++
+    update.repo git@simon.psaux.de:dot.fonts.git ~/.fonts/ || let status++
+    update.repo git@simon.psaux.de:dot.backgrounds.git ~/.backgrounds/ || let status++
+    update.repo git@simon.psaux.de:home.git ~/ || let status++
+
+    echo.header "${COLOR[white_bold]}Have a nice day, ${SUDO_USER:-${USER^}}! (-:${COLOR[none]}"
+    return $status
+}
+
+# }}}
+
