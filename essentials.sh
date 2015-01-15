@@ -23,6 +23,7 @@ alias wget='wget -c'
 alias tmux='TERM=screen-256color-bce tmux'
 alias sudo='sudo '  # sudo fix
 
+
 function es_out() {
     if [[ -z "${@}" ]] ; then
         local msgtype=""
@@ -313,7 +314,7 @@ function es_prompt() {
         PS1path=${PS1path:+$( color.ps1 black )${PS1path}}
         PS1chroot=${PS1chroot:+($( color.ps1 red )chroot$( color.ps1 ))}
         
-        if ${ESSENTIALS_IS_SUDO} || ${ESSENTIALS_IS_ROOT} ; then
+        if ${ESSENTIALS_IS_UID0} ; then
             PS1user=${PS1user:+$( color.ps1 red )${PS1user}$( color.ps1 )}
         fi
         
@@ -322,8 +323,8 @@ function es_prompt() {
         fi
     fi
     
-    if [ -e ${ESSENTIALS_DIR}/prompt_git.sh ] && [ -n "$( which timeout )" ] ; then
-        PS1git=$( LANG=C timeout 0.5 ${ESSENTIALS_DIR}/prompt_git.sh ${ESSENTIALS_COLORS} )
+    if [ -e ${ESSENTIALS_DIR}/gitstatus.sh ] && [ -n "$( which timeout )" ] ; then
+        PS1git=$( LANG=C timeout 0.5 ${ESSENTIALS_DIR}/gitstatus.sh ${ESSENTIALS_COLORS} )
         local gitret=$?
         [ $gitret -eq 124 ] && PS1git="($( color.ps1 red )git slow$( color.ps1 ))"
     else
@@ -435,7 +436,7 @@ export EXTENSIONS_ARCHIVES='7z,s7z,ace,arj,bz,bz2,bzip,bzip2,gz,gzip,lha,lzh,rar
 export ESSENTIALS_DIR="${ESSENTIALS_DIR:-$( dirname $( realpath ${BASH_SOURCE[0]}))}"
 
 # include external essential libs
-tmpname="colors.sh icons.sh prompt.sh functions.sh"
+tmpname="colors.sh icons.sh functions.sh"
 for script in ${tmpname} ; do
     if [ -r ${ESSENTIALS_DIR}/${script} ] ; then
         . ${ESSENTIALS_DIR}/${script}
