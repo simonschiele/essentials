@@ -62,23 +62,23 @@ alias list.colors=show.colors
 alias colors.show=show.colors
 alias colors.list=show.colors
 
-function color.existing() {
+function color.exists() {
     [ ${COLORS[${1:-none}]+isset} ] && return 0 || return 1
 }
 
 function color() {
-    ( color.existing ${1:-none} ) && echo -ne "${COLORS[${1:-none}]}"
+    ( color.exists ${1:-none} ) && echo -ne "${COLORS[${1:-none}]}"
 }
 
 function color.ps1() {
-    ( color.existing ${1:-none} ) && echo -ne "\[${COLORS[${1:-none}]}\]"
+    ( color.exists ${1:-none} ) && echo -ne "\[${COLORS[${1:-none}]}\]"
 }
 
 function color.echo() {
-    ( color.existing ${1:-black} ) && echo -e "${COLORS[${1:-black}]}${2}${COLORS[none]}"
+    ( color.exists ${1:-black} ) && echo -e "${COLORS[${1:-black}]}${2}${COLORS[none]}"
 }
 
 function color.echon() {
-    ( color.existing ${1:-black} ) && echo -ne "${COLORS[${1:-black}]}${2}${COLORS[none]}"
+    ( color.exists ${1:-black} ) && echo -ne "${COLORS[${1:-black}]}${2}${COLORS[none]}"
 }
 

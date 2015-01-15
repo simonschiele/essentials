@@ -64,7 +64,7 @@ function icon.color() {
     local color=${2:-red}
     local status=0
 
-    if ( ! icon.exists $icon ) || ( ! color.existing $color ) ; then
+    if ( ! icon.exists $icon ) || ( ! color.exists $color ) ; then
         status=1
         icon='fail'
         color='red'
