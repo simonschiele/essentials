@@ -4,7 +4,7 @@
 
 function whereami() {
 
-    ips=$( /sbin/ifconfig | grep -o "[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}" | sort -u | grep -v -e "^127" -e "^255" )
+    local ips=$( /sbin/ifconfig | grep -o "[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}" | sort -u | grep -v -e "^127" -e "^255" )
     if ( grep -q -i wlan-ap[0-9] <( /sbin/iwconfig 2>&1 )) && ( grep -q -i 192\.168\.190 <( /sbin/ifconfig 2>&1 )) ; then
         echo "work-mobile"
     elif ( echo $ips | grep -q -e "192\.168\.[78]0" -e "195\.4\.7[01]" ) ; then
@@ -14,19 +14,6 @@ function whereami() {
     else
         echo "unknown"
     fi
-}
-
-# }}}
-
-# {{{ web.google()
-
-function web.google() {
-    local Q="$@";
-    local GOOGLE_URL='https://www.google.com/search?tbs=li:1&q=';
-    local AGENT="Mozilla/4.0";
-    local stream=$(curl -A "$AGENT" -skLm 10 "${GOOGLE_URL}${Q//\ /+}");
-    echo "$stream" | grep -o "href=\"/url[^\&]*&amp;" \
-                   | sed 's/href=".url.q=\([^\&]*\).*/\1/';
 }
 
 # }}}
@@ -70,16 +57,14 @@ function nzb.queue() {
 # {{{ update.repo()
 
 function update.repo() {
-    local debug dir repo
     shopt -s extglob
 
-    debug=true
-    dir=${1:-$( pwd )}
-    dir=${dir%%+(/)}
+    local repo=false
+    local submodule=false
+    local below_repo=false
 
-    repo=false
-    submodule=false
-    below_repo=false
+    local dir=${1:-$( pwd )}
+    dir=${dir%%+(/)}
 
     if [ -d "${dir}/.git" ] && [ -e "${dir}/.git/index" ] ; then
         repo=true
@@ -125,20 +110,41 @@ function update.repo() {
 
 # }}}
 
+# {{{ web.*
+
+function web.google() {
+    local Q="$@";
+    local GOOGLE_URL='https://www.google.com/search?tbs=li:1&q=';
+    local AGENT="Mozilla/4.0";
+    local stream=$(curl -A "$AGENT" -skLm 10 "${GOOGLE_URL}${Q//\ /+}");
+    echo "$stream" | grep -o "href=\"/url[^\&]*&amp;" \
+                   | sed 's/href=".url.q=\([^\&]*\).*/\1/';
+}
+
+alias web.btc_worldwide='wget -q -O- https://bitpay.com/api/rates | json_pp'
+alias web.btc='echo -e "€: $( web.btc_worldwide | grep -C2 Euro | grep -o [0-9\.]* )" ; echo "$: $( btc.worldwide | grep -C2 USD | grep -o [0-9\.]* )"'
+alias btc=web.btc
+alias btc_worldwide=web.btc_worldwide
+
+# }}}
+
 # {{{ date.* + date/time stuff
 
 worldclock() {
-    zones="America/Los_Angeles America/Chicago America/Denver America/New_York Iceland Europe/London"
-    zones="${zones} Europe/Paris Europe/Berlin Europe/Moscow Asia/Hong_Kong Australia/Sydney"
+    local zones tz tz_short
+
+    zones="America/Los_Angeles America/Vancouver America/Denver America/Chicago"
+    zones+=" America/Detroit Cuba America/New_York America/Toronto Iceland"
+    zones+=" Europe/London Europe/Paris Europe/Berlin Europe/Moscow"
+    zones+=" Asia/Hong_Kong Australia/Sydney NZ"
 
     for tz in $zones
     do
-        local tz_short=$( echo ${tz} | cut -f'2' -d'/' )
+        tz_short=$( basename $tz )
         echo -n -e "${tz_short}\t"
         [[ ${#tz_short} -lt 8 ]] && echo -n -e "\t"
         TZ=${tz} date
     done
-    unset tz zones
 }
 
 alias date.format='date --help | sed -n "/^FORMAT/,/%Z/p"'
@@ -230,16 +236,19 @@ function scan.hosts() {
 
 # {{{ save.* (battery stuff)
 
-function save.battery_lifetime() {
+alias battery.show='upower -d | grep -e state -e percentage -e time | sort -u | tr "\n" " " | sed "s|^[^0-9]*\([0-9]*%\)[^:]*:\ *\([^\ ]*\)[^0-9\.]*\([0-9\.]*\)[^0-9]*$|(\1, \2, \3h)|g"; echo'
+
+function battery.save_lifetime() {
     echo 15 > /sys/devices/platform/smapi/BAT0/start_charge_thresh
     echo 85 > /sys/devices/platform/smapi/BAT0/stop_charge_thresh
 }
 
-function save.battery() {
+function battery.save() {
     if ! [ $( id -u ) -eq 0 ] ; then
         echo "please use root or sudo -s" >&2
         return 1
     fi
+    local f
 
     es_debug " * setting gov powersave for all $( grep ^process /proc/cpuinfo | wc -l ) cores"
     ${ESSENTIALS_DEBUG} && echo -n "[LOG]   " >&2
@@ -283,17 +292,29 @@ function save.battery() {
     for f in ls /sys/bus/usb/devices/*/power/control ; do echo 'auto' > "$f" ; done
 }
 
-alias show.battery='upower -d | grep -e state -e percentage -e time | sort -u | tr "\n" " " | sed "s|^[^0-9]*\([0-9]*%\)[^:]*:\ *\([^\ ]*\)[^0-9\.]*\([0-9\.]*\)[^0-9]*$|(\1, \2, \3h)|g"; echo'
+alias show.battery=battery.show
+alias save.battery=battery.save
+alias save.battery_lifetime=battery.save_lifetime
 
 # }}}
 
 # {{{ no.*
 
 function no.sleep() {
-    pkill -f screensaver
-    ( pgrep screensaver ) && echo "error: couldn't kill screensaver" && return 1
+    local status=0
+
+    # kill screensaver
+    pkill -f screensaver >/dev/null 2>&1
+    ( pgrep screensaver ) && echo "warning: couldn't kill screensaver" >&2 && status=1
+
+    # disable dpms
     xset -display ${DISPLAY:-:0} -dpms
 }
+
+alias no.blank=no.sleep
+alias no.screensaver=no.sleep
+alias no.sound=alsa.silent
+alias no.audio=alsa.silent
 
 # }}}
 
@@ -308,8 +329,6 @@ function show.tlds() {
 }
 
 function grep.tld() {
-    local input
-
     function process() {
         local iinput
         echo "${1}" | grep -o "[^\ \"\']\+\.[A-Za-z]\+" | while read iinput ; do
@@ -317,6 +336,8 @@ function grep.tld() {
             show.tlds | grep "^${clean_input}$"
         done
     }
+
+    local input
 
     while read -t 1 -r input ; do
         [ -z "${input}" ] && break
@@ -388,22 +409,6 @@ function show() {
     fi
 }
 
-alias show.ip_remote='addr=$( dig +short myip.opendns.com @resolver1.opendns.com | grep.ip ) ; echo remote:${addr:-$( wget -q -O- icanhazip.com | grep.ip )}'
-alias show.ip_local='LANG=C /sbin/ifconfig | grep -o -e "^[^\ ]*" -e "^\ *inet addr:\([0-9]\{1,3\}\.\)\{3\}[0-9]\{1,3\}" | tr "\n" " " | sed -e "s|\ *inet addr||g" -e "s|\ |\n|g"' #-e "s|:\(.*\)$|: $( color yellow )\1$( color none )|g"'
-alias show.ip='show.ip_local | sed "s|:\(.*\)$|: $( color yellow )\1$( color none )|g" ; show.ip_remote | sed "s|:\(.*\)$|: $( color green )\1$( color none )|g"'
-for tmpname in $( /sbin/ifconfig | grep -o "^[^ ]*" ) ; do
-    alias show.${tmpname}="$( echo /sbin/ifconfig ${tmpname} )"
-done
-
-alias show.io='echo -n d | nmon -s 1'
-alias show.tcp='sudo netstat -atp'
-alias show.tcp_stats='sudo netstat -st'
-alias show.udp='sudo netstat -aup'
-alias show.udp_stats='sudo netstat -su'
-alias show.window_class='xprop | grep CLASS'
-alias show.resolution='LANG=C xrandr -q | grep -o "current [0-9]\{3,4\} x [0-9]\{3,4\}" | sed -e "s|current ||g" -e "s|\ ||g"'
-alias show.certs='openssl s_client -connect '
-
 function show.stats() {
     color.echon "white_bold" "Date: " ; date +'%d.%m.%Y (%A, %H:%M)'
     color.echon "white_bold" "Host: " ; hostname
@@ -412,10 +417,10 @@ function show.stats() {
 
     echo -e "\n$( color white_under )$( color white_bold )Hardware:$( color )"
 
-    cpu=$( grep "^model\ name" /proc/cpuinfo | sed -e "s|^[^:]*:\([^:]*\)$|\1|g" -e "s/[\ ]\{2\}//g" -e "s|^\ ||g" )
+    local cpu=$( grep "^model\ name" /proc/cpuinfo | sed -e "s|^[^:]*:\([^:]*\)$|\1|g" -e "s/[\ ]\{2\}//g" -e "s|^\ ||g" )
     echo -e 'cpu: '$( echo -e "$cpu" | wc -l )'x '$( echo "$cpu" | head -n1 )
 
-    ram=$( LANG=c free -m | grep ^Mem | awk {'print $2'} )
+    local ram=$( LANG=c free -m | grep ^Mem | awk {'print $2'} )
     echo -ne "ram: ${ram}mb (free: $( free -m | grep cache\: | awk {'print $4'} )mb, "
     #free | awk '/Mem/{printf("used: %.2f%"), $3/$2*100} /buffers\/cache/{printf(", buffers: %.2f%"), $4/($3+$4)*100} /Swap/{printf(", swap: %.2f%"), $3/$2*100}'
 
@@ -425,6 +430,27 @@ function show.stats() {
 
     LANG=C df -h | grep "\ /$" | awk {'print "hd: "$2" (root, free: "$4")"'}
 }
+
+alias show.ip_remote='addr=$( dig +short myip.opendns.com @resolver1.opendns.com | grep.ip ) ; echo remote:${addr:-$( wget -q -O- icanhazip.com | grep.ip )}'
+alias show.ip_local='LANG=C /sbin/ifconfig | grep -o -e "^[^\ ]*" -e "^\ *inet addr:\([0-9]\{1,3\}\.\)\{3\}[0-9]\{1,3\}" | tr "\n" " " | sed -e "s|\ *inet addr||g" -e "s|\ |\n|g"' #-e "s|:\(.*\)$|: $( color yellow )\1$( color none )|g"'
+alias show.ip='show.ip_local | sed "s|:\(.*\)$|: $( color yellow )\1$( color none )|g" ; show.ip_remote | sed "s|:\(.*\)$|: $( color green )\1$( color none )|g"'
+
+# generate show.<interface> aliases
+for tmpname in $( /sbin/ifconfig | grep -o "^[^ ]*" ) ; do
+    alias show.${tmpname}="$( echo /sbin/ifconfig ${tmpname} )"
+done
+unset tmpname
+
+alias show.io='echo -n d | nmon -s 1'
+alias show.tcp='sudo netstat -atp'
+alias show.tcp_stats='sudo netstat -st'
+alias show.udp='sudo netstat -aup'
+alias show.udp_stats='sudo netstat -su'
+alias show.window_class='xprop | grep CLASS'
+alias show.resolution='LANG=C xrandr -q | grep -o "current [0-9]\{3,4\} x [0-9]\{3,4\}" | sed -e "s|current ||g" -e "s|\ ||g"'
+alias show.certs='openssl s_client -connect '
+alias show.keycodes='xev | grep -e keycode -e button'
+alias show.usb_sticks='for dev in $( udisks --dump | grep device-file | sed "s|^.*\:\ *\(.*\)|\1|g" ) ; do udisks --show-info ${dev} | grep -qi "removable.*1" && echo ${dev} ; done ; true ; unset dev'
 
 # }}}
 
@@ -445,13 +471,14 @@ function is.init_five() {
 
 alias find.dir='find . -type d'
 alias find.files='find . -type f'
-alias find.links='find . -type l'
-alias find.links+dead='find -L -type l'
 alias find.exec='find . ! -type d -executable'
 alias find.last_edited='find . -type f -printf "%T@ %T+ %p\n" | sort -n | tail -n 1000'
 alias find.last_edited_10k='find . -type f -printf "%T@ %T+ %p\n" | sort -n | tail -n 10000'
 alias find.repos='find . -name .git -or -name .svn -or -name .bzr -or -name .hg | while read dir ; do echo "$dir" | sed "s|\(.\+\)/\.\([a-z]\+\)$|\2: \1|g" ; done'
 alias find.comma='ls -r --format=commas'
+alias find.dead_links='find -L -type l'
+alias find.links='find -type l'
+alias find.links+dead='find.dead_links'
 
 function find.tree() {
     local dir="${1}"
@@ -509,7 +536,8 @@ alias sudo.password_enable='sudo grep -iq "^${SUDO_USER:-${USER}}.*NOPASSWD.*ALL
 
 alias log.dmesg='dmesg -T --color=auto'
 alias log.pidgin='find ~/.purple/logs/ -type f -mtime -5 | xargs tail -n 5'
-alias log.NetworkManager='sudo journalctl -u NetworkManager'
+alias log.networkManager='sudo journalctl -u NetworkManager'
+alias log.authlog="sudo grep -e \"^\$( LANG=C date -d'now -24 hours' +'%b %e' )\" -e \"^\$( LANG=C date +'%b %e' )\" /var/log/auth.log | grep.ip | sort -n | uniq -c | sort -n | grep -v \"\$( host -4 enkheim.psaux.de | grep.ip | head -n1 )\" | tac | head -n 10"
 
 # }}}
 
@@ -518,18 +546,46 @@ alias log.NetworkManager='sudo journalctl -u NetworkManager'
 alias grep.ip='grep -o "\([0-9]\{1,3\}\.\)\{3\}[0-9]\{1,3\}"'
 alias grep.url="sed -e \"s|'|\\\"|g\" -e \"s|src|href|g\" | sed -e \"s|href|\nhref|g\" | grep -i -e \"href[ ]*=\" | sed 's/.*href[ ]*=[ ]*[\"]*\(.*\)[\"\ ].*/\1/g' | cut -f'1' -d'\"'"
 alias grep.year='grep -o "[1-2][0-9]\{3\}"'
+alias grep.where="grep -nH"
 alias grep.highlite+passthru='grep --color=yes -e ^ -e'
 
 # }}}
 
 # {{{ random.*
 
-alias random.mac='openssl rand -hex 6 | sed "s/\(..\)/\1:/g; s/.$//"'
 alias random.ip='nmap -iR 1 -sL -n | grep.ip -o'
+alias random.mac='openssl rand -hex 6 | sed "s/\(..\)/\1:/g; s/.$//"'
 alias random.lotto='shuf -i 1-49 -n 6 | sort -n | xargs'
-random.hex() { openssl rand -hex ${1:-8} ; }
-random.integer() { from=1 ; to=${1:-100} ; [[ -n "${2}" ]] && from=${1} && to=${2} ; echo "f:${from} t:${to}"; echo "$(( RANDOM % ${2:-100} + ${1:-1} ))" ; }
-random.password() { openssl rand -base64 ${1:-8} ; }
+
+function random.password() {
+    local password password_first_char password_last_char
+
+    while [ -z "$password" ] ; do #|| [ "${pass:0:1}" ] ; do
+        password=$( openssl rand -base64 $(( ${1:-8} * 2 )) | cut -c1-${1:-8} )
+        password_first_char=${password:0:1}
+        password_last_char=${password: -1}
+        echo "pass: $password"
+        echo "pass_f: $password_first_char"
+        echo "pass_l: $password_last_char"
+    done
+
+    echo "$password"
+    return 0
+}
+
+function random.hex() {
+    local hex=$( openssl rand -hex ${1:-8} )
+}
+
+function random.integer() {
+    local from=1;
+    local to=${1:-100};
+
+    [[ -n "${2}" ]] && from=${1} && to=${2}
+    [ "$from" == "0" ] && to=$(( $to + 1 ))
+
+    echo "$(( RANDOM % ${to:-100} + ${from:-1} ))"
+}
 
 # }}}
 
@@ -545,6 +601,11 @@ alias wget.mirror_complete='wget --random-wait -r -p -e robots=off -U mozilla'
 # download all images from a site
 alias wget.mirror_images='wget -r -l1 --no-parent -nH -nd -P/tmp -A".gif,.jpg"'
 
+# downlink-speedtest
+alias wget.speedtest='wget -O- http://cachefly.cachefly.net/200mb.test > /dev/null'
+alias speedtest=wget.speedtest
+
+
 # }}}
 
 # {{{ sed.*
@@ -556,42 +617,121 @@ alias sed.strip_doubleslash='sed "s|[/]\+|/|g"'
 
 # }}}
 
-# system
-alias create.system_user='sudo adduser --no-create-home --disabled-login --shell /bin/false'
-alias observe.pid='strace -T -f -p'
+# {{{ alsa.*
 
-# sound
-alias alsa.silent='for mix in PCM MASTER Master ; do amixer -q sset $mix 0 2>/dev/null ; done'
-alias alsa.unsilent='for mix in PCM MASTER Master ; do amixer -q sset $mix 90% 2>/dev/null ; done'
-alias no.sound='alsa.silent'
+function alsa.volume() {
+    local percentage=$( echo ${1} | sed 's|[^0-9]||g' )
+    percentage=${percentage:-75}
 
-# synergy
+    local mix
+    local mixer="PCM MASTER Master"
+    for mix in $mixer ; do
+        amixer -q sset $mix ${percentage}% 2>/dev/null
+    done
+}
+
+alias alsa.loud='alsa.volume 100'
+alias alsa.medium='alsa.volume 75'
+alias alsa.silent='alsa.volume 0'
+alias alsa.mute=alsa.silent
+
+# }}}
+
+# {{{ synergy*.*
+
 alias synergys.custom='[ -e ~/.synergy/$( hostname -s ).conf ] && synergys --daemon --restart --display ${DISPLAY:-:0} --config ~/.synergy/$( hostname -s ).conf 2> ~/.log/synergys.log >&2 || echo "no config for this host available"'
 alias synergyc.custom='[ -e ~/.synergy/$( hostname -s ).conf ] && synergyc --daemon --restart --display ${DISPLAY:-:0} --name $( hostname -s ) $( ls ~/.synergy/ | grep -iv "$( hostname -s ).conf" | head -n1 | sed "s|\.conf$||g" ) 2> ~/.log/synergyc.log >&2'
-alias synergy.start='kill.synergy ; synergys.custom ; synergyc.custom'
-alias kill.synergy='killall -9 synergyc synergys 2>/dev/null ; true'
+alias synergys.kill='pkill -9 -f synergys'
+alias synergyc.kill='pkill -9 -f synergyc'
+alias synergy.kill='synergys.kill ; synergyc.kill ; true'
 
-# tools
-alias speedtest='wget -O- http://cachefly.cachefly.net/200mb.test > /dev/null'
-alias calculator='bc -l'
-alias calc='calculator'
+# }}}
 
-alias http.response='lwp-request -ds'
-alias patch.from_diff='patch -Np0 -i'
-alias show.keycodes='xev | grep -e keycode -e button'
-alias show.usb_sticks='for dev in $( udisks --dump | grep device-file | sed "s|^.*\:\ *\(.*\)|\1|g" ) ; do udisks --show-info ${dev} | grep -qi "removable.*1" && echo ${dev} ; done ; true'
-alias btc.worldwide='wget -q -O- https://bitpay.com/api/rates | json_pp'
-alias btc='echo -e "€: $( btc.worldwide | grep -C2 Euro | grep -o [0-9\.]* )" ; echo "$: $( btc.worldwide | grep -C2 USD | grep -o [0-9\.]* )"'
-alias kill.chrome='echo kill -9 $( ps aux | grep -i chrome | awk {"print $2"} | xargs ) 2>/dev/null'
-alias iso.grml='iso=$( ls -rt /share/Software/images/grml96*iso 2>/dev/null | tail -n1 ) ; iso=${iso:-$( find /boot -iname "grml*iso" 2>/dev/null )} ; iso=${iso:-$( find ~/ -iname "*grml*iso" 2>/dev/null | tail -n1 )} ; echo "$iso"'
-alias kvm.hd='kvm -m 1024 -boot c -hda'
-alias kvm.grml+hd='iso=$( iso.grml ) ; kvm -cdrom ${iso} -m 1024 -boot d -hda'
-alias create.qcow='next=$( printf "%02d\n" "$(( $( ls image_[0-9]*.img 2>/dev/null | grep -o [0-9]* | sort -n | tail -n1 ) + 1 ))" ) ; qemu-img create -f qcow2 -o preallocation=metadata image_${next}.img'
+# {{{ kill.*
+
+alias kill.chrome='pkill -9 -f chrome'
+alias kill.synergy='synergy.kill'
+
+# }}}
+
+# {{{ wakeonlan.*
 
 alias wakeonlan.windows='wakeonlan 00:1C:C0:8D:0C:73'
 alias wakeonlan.mediacenter='wakeonlan 00:01:2e:27:62:87'
 alias wakeonlan.cstation='wakeonlan 00:19:66:cf:82:04'
 alias wakeonlan.cbase='wakeonlan 00:50:8d:9c:3f:6e'
+
+# }}}
+
+# {{{ calc*
+
+alias calculator='bc -l'
+alias calc='calculator'
+
+# }}}
+
+# {{{ permissions.*
+
+alias permissions.normalize="find . -type f \! -perm -a+x -exec chmod 640 {} \; -o -type f -perm -a+x -exec chmod 750 {} \; -o -type d -exec chmod 750 {} \; ; chown \${SUDO_USER:-\$USER}: . -R"
+alias permissions.normalize_system="chown \${SUDO_USER:-\$USER}: ~/ -R ; find /home/* /root -maxdepth 0 -type d -exec chmod 700 {} \;"
+alias permissions.normalize_web="chown \${SUDO_USER:-\$USER}:www-data . -R ; find . -type f \! -perm -a+x -exec chmod 640 {} \; -o -type f -perm -a+x -exec chmod 750 {} \; -o -type d \( -iname 'log*' -o -iname 'cache' -o -iname 'templates_c' \) -exec chown www-data:\${SUDO_USER:-\$USER} {} -R \; -exec chmod 770 {} \; -o -type d -exec chmod 750 {} \;"
+
+# }}}
+
+# {{{ system.*
+
+alias system.create_system_user='sudo adduser --no-create-home --disabled-login --shell /bin/false'
+alias system.strace_pid='strace -T -f -p'
+
+# }}}
+
+# {{{ kvm.* + qcow.* + iso.*
+
+alias iso.grml='iso=$( ls -rt /share/Software/images/grml96*iso 2>/dev/null | tail -n1 ) ; iso=${iso:-$( find /boot -iname "grml*iso" 2>/dev/null )} ; iso=${iso:-$( find ~/ -iname "*grml*iso" 2>/dev/null | tail -n1 )} ; echo "$iso" ; unset iso'
+alias kvm.hd='kvm -m 1024 -boot c -hda'
+alias kvm.grml+hd='iso=$( iso.grml ) ; kvm -cdrom ${iso} -m 1024 -boot d -hda ; unset iso'
+alias create.qcow='next=$( printf "%02d\n" "$(( $( ls image_[0-9]*.img 2>/dev/null | grep -o [0-9]* | sort -n | tail -n1 ) + 1 ))" ) ; qemu-img create -f qcow2 -o preallocation=metadata image_${next}.img ; unset next'
+
+# }}}
+
+# {{{ convert.*
+
+function convert.img2pdf() {
+    local in="${@:-*.jpeg}"
+    local out="out_multipage.pdf"
+    convert -adjoin -page A4 ${in} ${out}
+}
+
+function convert.nrg2iso() {
+    local nrg iso msg
+    nrg=${1:-$( ( shopt -s nocaseglob ; ls -t *.nrg 2>/dev/null | head -n 1 ) )}
+    iso=${2:-${nrg/nrg/iso}}
+
+    if [ -z "${nrg}" ] ; then
+        msg="usage error - please call like this:\n > convert.nrg2iso infile.nrg [outfile.iso]"
+    elif [ ! -e "${nrg}" ] ; then
+        msg="error: couldn't find file '${nrg}'"
+    elif [ ! -r "${nrg}" ] ; then
+        msg="error: couldn't read exisiting file '${nrg}'"
+    else
+        ${ESSENTIALS_DEBUG} && echo "${nrg} -> ${iso}"
+        time dd bs=1k if="${nrg}" of="${iso}" skip=300
+        return 0
+    fi
+    
+    echo -e "${msg}" >&2
+    return 1
+}
+
+# }}}
+
+# {{{ patch
+
+alias patch.from_diff='patch -Np0 -i'
+
+# }}}
+
+# {{{ screenshot / screendump
 
 if ( which recordmydesktop >/dev/null ) ; then
     alias screendump='recordmydesktop -o screendump_$( date +%s ).ogv'
@@ -610,11 +750,5 @@ alias record.screendump=screendump
 alias record.screenvideo=screendump
 alias record.screenshot=screenshot
 
-alias permissions.normalize="find . -type f \! -perm -a+x -exec chmod 640 {} \; -o -type f -perm -a+x -exec chmod 750 {} \; -o -type d -exec chmod 750 {} \; ; chown \${SUDO_USER:-\$USER}: . -R"
-alias permissions.normalize_system="chown \${SUDO_USER:-\$USER}: ~/ -R ; find /home/* /root -maxdepth 0 -type d -exec chmod 700 {} \;"
-alias permissions.normalize_web="chown \${SUDO_USER:-\$USER}:www-data . -R ; find . -type f \! -perm -a+x -exec chmod 640 {} \; -o -type f -perm -a+x -exec chmod 750 {} \; -o -type d \( -iname 'log*' -o -iname 'cache' -o -iname 'templates_c' \) -exec chown www-data:\${SUDO_USER:-\$USER} {} -R \; -exec chmod 770 {} \; -o -type d -exec chmod 750 {} \;"
-
-alias rm.dead_links='find . -type l -exec test ! -e {} \; -delete'
-
-unset tmpname
+# }}}
 
