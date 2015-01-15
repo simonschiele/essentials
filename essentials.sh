@@ -8,7 +8,7 @@ function es_out() {
     else
         local msgtype="[${2^^}] "
     fi
-    
+
     echo "${msgtype}${1}"
 }
 
@@ -29,7 +29,7 @@ function es_debug_enable() {
     export ESSENTIALS_DEBUG=true
     . ${ESSENTIALS_DIR}/essentials.sh
     clear
-    es_info 
+    es_info
 }
 
 function es_center() {
@@ -80,12 +80,13 @@ function es_header() {
     echo -e "\n$( es_center_aligned "${@}" )\n"
 }
 
-function es_vr(){ 
+function es_vr(){
     echo -e "\n\n\n\n\n"
 }
 
 function es_hr() {
-    for i in $( seq ${COLUMNS:-80} ); do 
+    local i
+    for i in $( seq ${COLUMNS:-80} ); do
         echo -n "${1:-#}"
     done
     echo
@@ -97,13 +98,13 @@ function es_banner() {
     fi
 
     if es_depends "toilet" "bin" ; then
-        toilet -F border ${font} "essentials" --gay | es_center_aligned 
-        toilet ${font} -w 120 "simons bash workflow" --gay | es_center_aligned 
+        toilet -F border ${font} "essentials" --gay | es_center_aligned
+        toilet ${font} -w 120 "simons bash workflow" --gay | es_center_aligned
     elif es_depends "figlet" "bin" ; then
-        figlet ${font} "essentials" | es_center_aligned 
-        figlet ${font} -w 120 "simons bash workflow" | es_center_aligned 
+        figlet ${font} "essentials" | es_center_aligned
+        figlet ${font} -w 120 "simons bash workflow" | es_center_aligned
     else
-        echo "ESSENTIALS" | es_center_aligned 
+        echo "ESSENTIALS" | es_center_aligned
         echo "simons bash workflow" | es_center_aligned
     fi
 }
@@ -117,7 +118,7 @@ function es_info() {
     es_out "* HOME: ${ESSENTIALS_HOME}/"
     es_out "* DIR CACHE: ${ESSENTIALS_DIR_CACHE}/"
     es_out "* DIR LOG: ${ESSENTIALS_DIR_LOG}/"
-    es_out "* SUDO: ${ESSENTIALS_IS_SUDO}"
+    es_out "* SUDO: ${ESSENTIALS_IS_SUDO} (unlocked: ${ESSENTIALS_IS_SUDO_UNLOCKED})"
     es_out "* ROOT: ${ESSENTIALS_IS_ROOT}"
     es_out "* SSH: ${ESSENTIALS_IS_SSH}"
     es_out "* MOSH: ${ESSENTIALS_IS_MOSH}"
@@ -183,7 +184,7 @@ function es_return_unicode() {
     fi
 
     echo -e " $( color ${iconcolor} )$( icon $icon )$( color )"
-    return ${status} 
+    return ${status}
 }
 
 function es_exit() {
@@ -219,11 +220,11 @@ function es_depends() {
         dpkg|deb|debian)
                 dpkg -l | grep -iq "^ii\ \ ${depends_name}\ " && available=true
             ;;
-        
+
         bin|which|executable)
                 which ${depends_name} >/dev/null && available=true
             ;;
-        
+
         *)
                 es_depends ${depends_name} bin && available=true
             ;;
@@ -242,7 +243,7 @@ function es_depends_essentials() {
         return 1
     fi
 
-    return 0 
+    return 0
 }
 
 function es_repo_version() {
@@ -258,13 +259,13 @@ function es_repo_version_date() {
     local orig_date=$( git log --pretty=format:'%ci' -1 | awk {'print $1'} )
     local from_date=$( date "--date=$orig_date -1 day" +%Y-%m-%d )
     local to_date=$( date "--date=$orig_date +1 day" +%Y-%m-%d )
-    local commits=$(( $( git log --pretty=format:'%h %cr' --since=${from_date} --until=${to_date} | wc -l ) + 1 )) 
+    local commits=$(( $( git log --pretty=format:'%h %cr' --since=${from_date} --until=${to_date} | wc -l ) + 1 ))
     echo ${from_date//-/}~${commits}
     cd "${OLDPWD}"
 }
 
 function es_called_by_pipe() {
-    [[ -p /dev/stdin ]] 
+    [[ -p /dev/stdin ]]
 }
 
 function es_called_by_include() {
@@ -277,13 +278,14 @@ function es_called_by_exec() {
 }
 
 function es_tmp_dir() {
-    dir=${@:-$( pwd )}
-    echo "${dir}"
+    local dir=${@:-$( pwd )}
+    #todo: implement
+    echo -n
 }
 
 function es_tmp_file() {
     #todo: implement
-    echo ""
+    echo -n
 }
 
 function es_grep() {
@@ -295,37 +297,28 @@ function es_edit() {
 }
 
 function es_goodmorning() {
-    for i in ${@} ; do
-        echo $i
-    done
-
     local status=0
-    local has_root=false
+    local sudo_cmd
 
     clear
     es_header "$( color white_bold )Good Morning, ${SUDO_USER:-${USER^}}!$( color )"
     show.stats
 
-    if [ $( id -u ) -eq 0 ] ; then
-        has_root=true
+    if ${ESSENTIALS_IS_UID0} ; then
+        # user already has uid0
         sudo_cmd=""
     elif ( sudo -n echo -n 2>/dev/null ) ; then
-        has_root=true
+        # sudo already unlocked
         sudo_cmd="sudo"
+    elif ( sudo echo -n ) ; then
+        # user unlocked sudo
+        sudo_cmd="sudo"
+    else
+        echo -e "\n$( color red )error$( color ): couldn't unlock sudo\n" >&2
+        return 1
     fi
 
-    if ! ( ${has_root} ) ; then
-        echo -e "\n$( color white_under )$( color white_bold )sudo$( color )"
-        if ! ( sudo echo -n ) ; then
-            echo -e "\n$( color red )error$( color ): couldn't unlock sudo\n" >&2
-            return 1
-        else
-            has_root=true
-            sudo_cmd="sudo"
-        fi
-    fi
-
-    echo -e "\n$( color white_under )$( color white_bold )Debian:$( none )"
+    echo -e "\n$( color white_under )$( color white_bold )Debian:$( color )"
     echo "version: $( lsb_release -ds 2>&1 )"
 
     echo -n "updating packagelists: "
@@ -376,7 +369,7 @@ for script in ${tmpname} ; do
         . ${ESSENTIALS_DIR}/${script}
     else
         echo "[ERROR] ${script} not found in ${ESSENTIALS_DIR}" >&2
-        return 1 
+        return 1
     fi
 done
 
@@ -403,7 +396,7 @@ for configfile in ${tmpname} ; do
     fi
 done
 
-# config defaults 
+# config defaults
 export LUKS_KEYSIZE=${CONFIG['luks_keysize']:-512}
 export LUKS_CIPHER=${CONFIG['luks_cipher']:-aes-xts-plain64:sha256}
 
@@ -475,13 +468,14 @@ export ESSENTIALS_VERSION_VIM=$( vim --version | grep -o "[0-9.]\+" | head -n 1 
 export ESSENTIALS_VERSION_GIT=$( git --version | sed 's/git version //' )
 export ESSENTIALS_VERSION_HOME=$( es_repo_version_date ${ESSENTIALS_HOME} )
 export ESSENTIALS_IS_SUDO=$( pstree -s "$$" | grep -qi 'sudo' ; echo ${BOOLEAN[$?]} )
+export ESSENTIALS_IS_SUDO_UNLOCKED=$( sudo -n echo -n 2>/dev/null ; echo ${BOOLEAN[$?]} )  # maybe rename
 export ESSENTIALS_IS_ROOT=$( [ $( id -u ) -eq 0 ] && ! ${ESSENTIALS_IS_SUDO} ; echo ${BOOLEAN[$?]} )
 export ESSENTIALS_IS_UID0=$( ${ESSENTIALS_IS_SUDO} || ${ESSENTIALS_IS_ROOT} ; echo ${BOOLEAN[$?]} )
 export ESSENTIALS_IS_SSH=$( pstree -s "$$" | grep -qi 'ssh' ; echo ${BOOLEAN[$?]} )
 export ESSENTIALS_IS_MOSH=$( pstree -s "$$" | grep -qi 'mosh' ; echo ${BOOLEAN[$?]} )
 export ESSENTIALS_IS_TMUX=$( pstree -s "$$" | grep -qi 'tmux' ; echo ${BOOLEAN[$?]} )
 export ESSENTIALS_IS_SCREEN=$( pstree -s "$$" | grep -qi 'screen' ; echo ${BOOLEAN[$?]} )
-export ESSENTIALS_HAS_SSHAGENT=$( [ -n "$( ps hp ${SSH_AGENT_PID} 2>/dev/null )" ] ; echo ${BOOLEAN[$?]} ) 
+export ESSENTIALS_HAS_SSHAGENT=$( [ -n "$( ps hp ${SSH_AGENT_PID} 2>/dev/null )" ] ; echo ${BOOLEAN[$?]} )
 
 # cleanup
 unset CONFIG tmpname script bin pkg configfile i j
