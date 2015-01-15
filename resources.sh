@@ -152,7 +152,7 @@ function es_debug_enable() {
 function es_center() {
     if es_called_by_pipe ; then
         while read data ; do
-            local length=$( echo ${data} | sed -r "s:\x1B\[[0-9;]*[mK]::g" | wc -m)
+            local length=$( echo ${data} | sed -r "s:\x1B\[[0-9;]*[mK]::g" | wc -m )
             seq 1 $((( ${COLUMNS} - ${length}) / 2 )) | while read i ; do
                 echo -n " "
             done
@@ -160,7 +160,7 @@ function es_center() {
         done
     else
         echo "$@" | while read data ; do
-            local length=$( echo ${data} | sed -r "s:\x1B\[[0-9;]*[mK]::g" | wc -m)
+            local length=$( echo ${data} | sed -r "s:\x1B\[[0-9;]*[mK]::g" | wc -m )
             seq 1 $((( ${COLUMNS} - ${length}) / 2 )) | while read i ; do
                 echo -n " "
             done
@@ -173,7 +173,7 @@ function es_center_aligned() {
     if es_called_by_pipe ; then
         while read data ; do
             if [ -z "$length" ] ; then
-                local length=$( echo ${data} | sed -r "s:\x1B\[[0-9;]*[mK]::g" | wc -m)
+                local length=$( echo ${data} | sed -r "s:\x1B\[[0-9;]*[mK]::g" | wc -m )
             fi
             seq 1 $((( ${COLUMNS} - ${length}) / 2 )) | while read i ; do
                 echo -n " "
@@ -183,7 +183,7 @@ function es_center_aligned() {
     else
         echo "$@" | while read data ; do
             if [ -z "$length" ] ; then
-                local length=$( echo ${data} | sed -r "s:\x1B\[[0-9;]*[mK]::g" | wc -m)
+                local length=$( echo ${data} | sed -r "s:\x1B\[[0-9;]*[mK]::g" | wc -m )
             fi
             seq 1 $((( ${COLUMNS} - ${length}) / 2 )) | while read i ; do
                 echo -n " "
@@ -192,6 +192,11 @@ function es_center_aligned() {
         done
     fi
 }
+
+function es_header() {
+    echo -e "\n$( es_center_aligned "${@}" )\n"
+}
+
 
 function es_banner() {
     if [ $( find /usr/share/figlet/ /usr/local/figlet/ /usr/local/share/figlet/ /usr/share/toilet/ /usr/local/toilet/ /usr/local/share/toilet/ -iname "future\.*" 2>/dev/null | wc -l ) -gt 0 ] ; then
@@ -259,10 +264,38 @@ function es_return() {
     es_debug "${2}" "error"
     return ${1:-0}
 }
+function es_return_unicode() {
+    if [ ${1} -gt 0 ] ; then
+        echo -e " ${COLOR[red]}${ICON[fail]}${COLOR[none]}"
+    else
+        echo -e " ${COLOR[green]}${ICON[success]}${COLOR[none]}"
+    fi
+
+    return ${1}
+}
 
 function es_exit() {
     es_debug "${2}" "error"
     exit ${1:-0}
+}
+
+function es_confirm_yesno() {
+    while read -p "${1:-Are you sure (Y/N)? }" -r -n 1 -s answer; do
+        if [[ $answer = [YyNn] ]]; then
+            [[ $answer = [Yy] ]] && ( echo ; return 0 )
+            [[ $answer = [Nn] ]] && ( echo ; return 1 )
+            break
+        fi
+    done
+}
+
+function es_confirm_yesno_whiptail() {
+    whiptail --yesno "${1:-Are you sure you want to perform 'unknown action'?}" 10 60
+}
+
+function es_confirm_keypress() {
+    local keypress
+    read -s -r -p "${1:-Press any key to continue...}" -n 1 keypress
 }
 
 function es_depends() {
@@ -348,92 +381,7 @@ function es_edit() {
     ${EDITOR} ${ESSENTIALS_HOME}/.bashrc ${ESSENTIALS_DIR}/*sh ${ESSENTIALS_HOME}/.profile ${@}
 }
 
-function vr(){ echo -e "\n\n\n\n\n"; }
-function hr() { for i in $( seq ${COLUMNS:-80} ); do echo -n "="; done; echo; };
-
-function t() { true; }
-function f() { false; }
-function r() { return ${1:-0}; }
-
-export BOOLEAN=(true false)
-export EXTENSIONS_VIDEO='avi,mkv,mp4,mpg,mpeg,wmv,wmvlv,webm,3g,mov,flv'
-export EXTENSIONS_IMAGES='png,jpg,jpeg,gif,bmp,tiff,ico,lzw,raw,ppm,pgm,pbm,psd,img,xcf,psp,svg,ai'
-export EXTENSIONS_AUDIO='flac,mp1,mp2,mp3,ogg,wav,aac,ac3,dts,m4a,mid,midi,mka,mod,oma,wma'
-export EXTENSIONS_DOCUMENTS='asc,rtf,txt,abw,zabw,bzabw,chm,pdf,doc,docx,docm,odm,odt,ods,ots,sdw,stw,wpd,wps,pxl,sxc,xlsx,xlsm,odg,odp,pps,ppsx,ppt,pptm,pptx,sda,sdd,sxd,dot,dotm,dotx,mobi,prc,epub,pdb,prc,tpz,azw,azw1,azw3,azw4,kf8,lit,fb2'
-export EXTENSIONS_ARCHIVES='7z,s7z,ace,arj,bz,bz2,bzip,bzip2,gz,gzip,lha,lzh,rar,r0,r00,tar,taz,tbz,tbz2,tgz,zip,rpm,deb'
-
-# {{{ confirm()
-
-function confirm.whiptail_yesno() {
-    whiptail --yesno "${1:-Are you sure you want to perform 'unknown action'?}" 10 60
-}
-
-function confirm.yesno() {
-    while read -p "${1:-Are you sure (Y/N)? }" -r -n 1 -s answer; do
-        if [[ $answer = [YyNn] ]]; then
-            [[ $answer = [Yy] ]] && ( echo ; return 0 )
-            [[ $answer = [Nn] ]] && ( echo ; return 1 )
-            break
-        fi
-    done
-}
-
-function confirm.keypress() {
-    local keypress
-    read -s -r -p "${1:-Press any key to continue...}" -n 1 keypress
-}
-
-# }}}
-
-# {{{ return.unicode()
-
-function return.unicode() {
-    if [ ${1} -gt 0 ] ; then
-        echo -e " ${COLOR[red]}${ICON[fail]}${COLOR[none]}"
-    else
-        echo -e " ${COLOR[green]}${ICON[success]}${COLOR[none]}"
-    fi
-
-    return ${1}
-}
-
-# }}}
-
-# {{{ verify_su()
-
-function verify_su() {
-    if [ "$( id -u )" == "0" ] ; then
-        return 0
-    elif ( sudo -n echo -n ) ; then
-        return 0
-    elif ( sudo echo -n ) ; then
-        return 0
-    else
-        return 1
-    fi
-}
-
-# }}}
-
-# {{{ echo.centered()
-
-function echo.centered() {
-    printf "%*s\n" $(( ${#1} + ( ${COLUMNS} - ${#1} ) / 2 )) "${1}"
-}
-
-# }}}
-
-# {{{ echo.header()
-
-function echo.header() {
-    echo -e "\n$( echo.centered "${@}" )\n"
-}
-
-# }}}
-
-# {{{ good_morning()
-
-function good_morning() {
+function es_goodmorning() {
     for i in ${@} ; do
         echo $i
     done
@@ -442,7 +390,7 @@ function good_morning() {
     local has_root=false
 
     clear
-    echo.header "${COLOR[white_bold]}Good Morning, ${SUDO_USER:-${USER^}}!${COLOR[none]}"
+    es_header "${COLOR[white_bold]}Good Morning, ${SUDO_USER:-${USER^}}!${COLOR[none]}"
     show.stats
 
     if [ $( id -u ) -eq 0 ] ; then
@@ -490,9 +438,22 @@ function good_morning() {
     update.repo git@simon.psaux.de:dot.backgrounds.git ~/.backgrounds/ || let status++
     update.repo git@simon.psaux.de:home.git ~/ || let status++
 
-    echo.header "${COLOR[white_bold]}Have a nice day, ${SUDO_USER:-${USER^}}! (-:${COLOR[none]}"
+    es_header "${COLOR[white_bold]}Have a nice day, ${SUDO_USER:-${USER^}}! (-:${COLOR[none]}"
     return $status
 }
 
-# }}}
+
+function vr(){ echo -e "\n\n\n\n\n"; }
+function hr() { for i in $( seq ${COLUMNS:-80} ); do echo -n "="; done; echo; };
+
+function t() { true; }
+function f() { false; }
+function r() { return ${1:-0}; }
+
+export BOOLEAN=(true false)
+export EXTENSIONS_VIDEO='avi,mkv,mp4,mpg,mpeg,wmv,wmvlv,webm,3g,mov,flv'
+export EXTENSIONS_IMAGES='png,jpg,jpeg,gif,bmp,tiff,ico,lzw,raw,ppm,pgm,pbm,psd,img,xcf,psp,svg,ai'
+export EXTENSIONS_AUDIO='flac,mp1,mp2,mp3,ogg,wav,aac,ac3,dts,m4a,mid,midi,mka,mod,oma,wma'
+export EXTENSIONS_DOCUMENTS='asc,rtf,txt,abw,zabw,bzabw,chm,pdf,doc,docx,docm,odm,odt,ods,ots,sdw,stw,wpd,wps,pxl,sxc,xlsx,xlsm,odg,odp,pps,ppsx,ppt,pptm,pptx,sda,sdd,sxd,dot,dotm,dotx,mobi,prc,epub,pdb,prc,tpz,azw,azw1,azw3,azw4,kf8,lit,fb2'
+export EXTENSIONS_ARCHIVES='7z,s7z,ace,arj,bz,bz2,bzip,bzip2,gz,gzip,lha,lzh,rar,r0,r00,tar,taz,tbz,tbz2,tgz,zip,rpm,deb'
 

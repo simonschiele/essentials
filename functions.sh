@@ -117,9 +117,9 @@ function update.repo() {
         echo -en "  ${ICON['blackcircle']}  Updating ${dir}"
         cd "${dir}" 2>/dev/null && local out=$( LANG=C git pull --recurse-submodules=yes 2>&1 )
         local ret=$? ; [ $ret -eq 0 ] && cd ${OLDPWD}
-    fi
+        fi
 
-    return.unicode $ret
+    es_return_unicode $ret
     return $ret
 }
 
@@ -155,7 +155,7 @@ alias stopwatch='time read -n 1'
 # {{{ debian.*
 
 function debian.add_pubkey() {
-    if ! verify_su ; then
+    if ! ( ${ESSENTIALS_IS_UID0} ) ; then
         echo "you need root/sudo permissions to call debian_add_pubkey" 1>&2
         return 1
     elif [ -z "${1}" ] ; then
