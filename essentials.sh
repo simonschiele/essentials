@@ -13,15 +13,15 @@ export OPEN='gnome-open'
 
 # application overwrites
 alias cp='cp -i -r'
-alias less='less'
-alias mkdir='mkdir -p'
 alias mv='mv -i'
 alias rm='rm -i'
+alias sudo='sudo '  # sudo fix
+alias less='less'
+alias mkdir='mkdir -p'
 alias screen='screen -U'
 alias dmesg='dmesg -T --color=auto'
 alias wget='wget -c'
 alias tmux='TERM=screen-256color-bce tmux'
-alias sudo='sudo '  # sudo fix
 
 
 function es_out() {
@@ -292,11 +292,11 @@ function es_tmp_file() {
 }
 
 function es_grep() {
-    grep -r ${@:-^} ${ESSENTIALS_HOME}/.bashrc ${ESSENTIALS_DIR}/*sh ${ESSENTIALS_HOME}/.profile
+    grep -r ${@:-^} ${ESSENTIALS_DIR}/ ${ESSENTIALS_HOME}/{.bashrc,.profile,.xsession,.gitconfig,.ssh/config}
 }
 
 function es_edit() {
-    ${EDITOR} ${ESSENTIALS_HOME}/.bashrc ${ESSENTIALS_DIR}/*sh ${ESSENTIALS_HOME}/.profile ${@}
+    ${EDITOR} ${ESSENTIALS_DIR}/{*.sh,*.md} ${ESSENTIALS_HOME}/{.bashrc,.profile,.xsession,.gitconfig,.ssh/config} ${@}
 }
 
 function es_prompt() {
@@ -421,8 +421,7 @@ EDITOR=${EDITOR:-$( which emacs )}
 export EDITOR
 
 # check if powerline patched font for vim is available
-POWERLINE_FONT=$( [ $( find ~/.fonts/ -iname "*pragmata*powerline*ttf" 2>/dev/null | wc -l ) -eq 0 ] ; echo ${BOOLEAN[$?]} )
-export POWERLINE_FONT
+export POWERLINE_FONT=$( [ $( find ~/.fonts/ -iname "*pragmata*powerline*ttf" 2>/dev/null | wc -l ) -eq 0 ] ; echo ${BOOLEAN[$?]} )
 
 # helper
 export BOOLEAN=(true false)
