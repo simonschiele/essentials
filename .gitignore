@@ -1,3 +1,7 @@
+# temporary removes / movings
+deprecated.sh
+
+# ignore garbage  
 .DS_Store
 .DS_Store?
 ._DS_Store
