@@ -268,7 +268,8 @@ function es_called_by_pipe() {
 }
 
 function es_called_by_include() {
-    [ -n "${BASH_SOURCE[2]}" ]
+    #[ -n "${BASH_SOURCE[2]}" ]
+    [ "$( realpath ${0} )" != "$( realpath ${BASH_SOURCE[0]} )" ]
 }
 
 function es_called_by_exec() {
@@ -369,7 +370,7 @@ export EXTENSIONS_ARCHIVES='7z,s7z,ace,arj,bz,bz2,bzip,bzip2,gz,gzip,lha,lzh,rar
 export ESSENTIALS_DIR="${ESSENTIALS_DIR:-$( dirname $( realpath ${BASH_SOURCE[0]}))}"
 
 # include external essential libs
-tmpname="colors.sh icons.sh functions.sh"
+tmpname="colors.sh icons.sh prompt.sh functions.sh"
 for script in ${tmpname} ; do
     if [ -r ${ESSENTIALS_DIR}/${script} ] ; then
         . ${ESSENTIALS_DIR}/${script}
