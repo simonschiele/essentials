@@ -3,10 +3,10 @@
 color=${1:-false}
 
 if ( $color ) ; then
-    if [ -r ~/.essentials/resources.sh ] ; then
-        . ~/.essentials/resources.sh
+    if [ -r ~/.essentials/colors.sh ] ; then
+        . ~/.essentials/colors.sh
     else
-        echo "error: couldn't include resources.sh"
+        echo "error: couldn't include colors.sh from resources"
         exit 1
     fi
 fi
