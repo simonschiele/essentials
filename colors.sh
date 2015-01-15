@@ -1,79 +1,84 @@
+#!/bin/bash
 
-declare -A COLOR
+declare -A COLORS
 
-COLOR[none]="\e[0m"
-COLOR[off]="\e[0m"
-COLOR[false]="\e[0m"
-COLOR[normal]="\e[0m"
+COLORS[none]="\e[0m"
+COLORS[off]="\e[0m"
+COLORS[false]="\e[0m"
+COLORS[normal]="\e[0m"
 
 # Basic Colors
-COLOR[black]="\e[0;30m"
-COLOR[red]="\e[0;31m"
-COLOR[green]="\e[0;32m"
-COLOR[yellow]="\e[0;33m"
-COLOR[blue]="\e[0;34m"
-COLOR[purple]="\e[0;35m"
-COLOR[cyan]="\e[0;36m"
-COLOR[white]="\e[0;37m"
+COLORS[black]="\e[0;30m"
+COLORS[red]="\e[0;31m"
+COLORS[green]="\e[0;32m"
+COLORS[yellow]="\e[0;33m"
+COLORS[blue]="\e[0;34m"
+COLORS[purple]="\e[0;35m"
+COLORS[cyan]="\e[0;36m"
+COLORS[white]="\e[0;37m"
 
 # Bold Colors
-COLOR[black_bold]="\e[1;30m"
-COLOR[red_bold]="\e[1;31m"
-COLOR[green_bold]="\e[1;32m"
-COLOR[yellow_bold]="\e[1;33m"
-COLOR[blue_bold]="\e[1;34m"
-COLOR[purple_bold]="\e[1;35m"
-COLOR[cyan_bold]="\e[1;36m"
-COLOR[white_bold]="\e[1;37m"
+COLORS[black_bold]="\e[1;30m"
+COLORS[red_bold]="\e[1;31m"
+COLORS[green_bold]="\e[1;32m"
+COLORS[yellow_bold]="\e[1;33m"
+COLORS[blue_bold]="\e[1;34m"
+COLORS[purple_bold]="\e[1;35m"
+COLORS[cyan_bold]="\e[1;36m"
+COLORS[white_bold]="\e[1;37m"
 
 # Underline
-COLOR[black_under]="\e[4;30m"
-COLOR[red_under]="\e[4;31m"
-COLOR[green_under]="\e[4;32m"
-COLOR[yellow_under]="\e[4;33m"
-COLOR[blue_under]="\e[4;34m"
-COLOR[purple_under]="\e[4;35m"
-COLOR[cyan_under]="\e[4;36m"
-COLOR[white_under]="\e[4;37m"
+COLORS[black_under]="\e[4;30m"
+COLORS[red_under]="\e[4;31m"
+COLORS[green_under]="\e[4;32m"
+COLORS[yellow_under]="\e[4;33m"
+COLORS[blue_under]="\e[4;34m"
+COLORS[purple_under]="\e[4;35m"
+COLORS[cyan_under]="\e[4;36m"
+COLORS[white_under]="\e[4;37m"
 
 # Background Colors
-COLOR[black_background]="\e[40m"
-COLOR[red_background]="\e[41m"
-COLOR[green_background]="\e[42m"
-COLOR[yellow_background]="\e[43m"
-COLOR[blue_background]="\e[44m"
-COLOR[purple_background]="\e[45m"
-COLOR[cyan_background]="\e[46m"
-COLOR[white_background]="\e[47m"
-COLOR[gray_background]="\e[100m"
+COLORS[black_background]="\e[40m"
+COLORS[red_background]="\e[41m"
+COLORS[green_background]="\e[42m"
+COLORS[yellow_background]="\e[43m"
+COLORS[blue_background]="\e[44m"
+COLORS[purple_background]="\e[45m"
+COLORS[cyan_background]="\e[46m"
+COLORS[white_background]="\e[47m"
+COLORS[gray_background]="\e[100m"
 
-export COLOR
+export COLORS
 
 function show.colors() {
     (
-        for key in "${!COLOR[@]}" ; do
-            echo -e " ${COLOR[$key]} == COLORTEST ${key} == ${COLOR[none]}"
+        for key in "${!COLORS[@]}" ; do
+            echo -e " ${COLORS[$key]} == COLORTEST ${key} == ${COLORS[none]}"
         done
     ) | column -c ${COLUMNS:-120}
 }
 
+alias list.colors=show.colors
+alias colors.show=show.colors
+alias colors.list=show.colors
+
 function color.existing() {
-    [ ${COLOR[${1:-none}]+isset} ] && return 0 || return 1
+    [ ${COLORS[${1:-none}]+isset} ] && return 0 || return 1
 }
 
 function color() {
-    ( color.existing ${1:-none} ) && echo -ne "${COLOR[${1:-none}]}"
+    ( color.existing ${1:-none} ) && echo -ne "${COLORS[${1:-none}]}"
 }
 
 function color.ps1() {
-    ( color.existing ${1:-none} ) && echo -ne "\[${COLOR[${1:-none}]}\]"
+    ( color.existing ${1:-none} ) && echo -ne "\[${COLORS[${1:-none}]}\]"
 }
 
 function color.echo() {
-    ( color.existing ${1:-black} ) && echo -e "${COLOR[${1:-black}]}${2}${COLOR[none]}"
+    ( color.existing ${1:-black} ) && echo -e "${COLORS[${1:-black}]}${2}${COLORS[none]}"
 }
 
 function color.echon() {
-    ( color.existing ${1:-black} ) && echo -ne "${COLOR[${1:-black}]}${2}${COLOR[none]}"
+    ( color.existing ${1:-black} ) && echo -ne "${COLORS[${1:-black}]}${2}${COLORS[none]}"
 }
 

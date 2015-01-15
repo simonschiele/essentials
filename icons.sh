@@ -1,48 +1,76 @@
+#!/bin/bash
 
-declare -A ICON
+declare -A ICONS
 
-ICON[trademark]='\u2122'
-ICON[copyright]='\u00A9'
-ICON[registered]='\u00AE'
-ICON[asterism]='\u2042'
-ICON[voltage]='\u26A1'
-ICON[whitecircle]='\u25CB'
-ICON[blackcircle]='\u25CF'
-ICON[largecircle]='\u25EF'
-ICON[percent]='\u0025'
-ICON[permille]='\u2030'
-ICON[pilcrow]='\u00B6'
-ICON[peace]='\u262E'
-ICON[yinyang]='\u262F'
-ICON[russia]='\u262D'
-ICON[turkey]='\u262A'
-ICON[skull]='\u2620'
-ICON[heavyheart]='\u2764'
-ICON[whiteheart]='\u2661'
-ICON[blackheart]='\u2665'
-ICON[whitesmiley]='\u263A'
-ICON[blacksmiley]='\u263B'
-ICON[female]='\u2640'
-ICON[male]='\u2642'
-ICON[airplane]='\u2708'
-ICON[radioactive]='\u2622'
-ICON[ohm]='\u2126'
-ICON[pi]='\u220F'
-ICON[cross]='\u2717'
-ICON[fail]='\u2717'
-ICON[error]='\u2717'
-ICON[check]='\u2714'
-ICON[ok]='\u2714'
-ICON[success]='\u2714'
-ICON[warning]='⚠'
+ICONS[trademark]='\u2122'
+ICONS[copyright]='\u00A9'
+ICONS[registered]='\u00AE'
+ICONS[asterism]='\u2042'
+ICONS[voltage]='\u26A1'
+ICONS[whitecircle]='\u25CB'
+ICONS[blackcircle]='\u25CF'
+ICONS[largecircle]='\u25EF'
+ICONS[percent]='\u0025'
+ICONS[permille]='\u2030'
+ICONS[pilcrow]='\u00B6'
+ICONS[peace]='\u262E'
+ICONS[yinyang]='\u262F'
+ICONS[russia]='\u262D'
+ICONS[turkey]='\u262A'
+ICONS[skull]='\u2620'
+ICONS[heavyheart]='\u2764'
+ICONS[whiteheart]='\u2661'
+ICONS[blackheart]='\u2665'
+ICONS[whitesmiley]='\u263A'
+ICONS[blacksmiley]='\u263B'
+ICONS[female]='\u2640'
+ICONS[male]='\u2642'
+ICONS[airplane]='\u2708'
+ICONS[radioactive]='\u2622'
+ICONS[ohm]='\u2126'
+ICONS[pi]='\u220F'
+ICONS[cross]='\u2717'
+ICONS[fail]='\u2717'
+ICONS[error]='\u2717'
+ICONS[check]='\u2714'
+ICONS[ok]='\u2714'
+ICONS[success]='\u2714'
+ICONS[warning]='⚠'
 
-export ICON
+export ICONS
 
 function show.icons() {
-    ( 
-        for key in "${!ICON[@]}" ; do
-            echo -e " ${ICON[$key]} : ${key}"
+    (
+        for key in "${!ICONS[@]}" ; do
+            echo -e " ${ICONS[$key]} : ${key}"
         done
     ) | column -c ${COLUMNS:-80}
+}
+
+alias list.icons=show.icons
+alias icons.show=show.icons
+alias icons.list=show.icons
+
+function icon.exists() {
+    [ ${ICONS[${1:-none}]+isset} ] && return 0 || return 1
+}
+
+function icon() {
+    ( icon.exists ${1:-none} ) && echo -ne "${ICONS[${1:-none}]}"
+}
+
+function icon.color() {
+    local icon=${1:-fail}
+    local color=${2:-red}
+    local status=0
+
+    if ( ! icon.exists $icon ) || ( ! color.existing $color ) ; then
+        status=1
+        icon='fail'
+        color='red'
+    fi
+
+    color.echon $color $( icon $icon )
+    return ${status}
 }
 

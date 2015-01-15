@@ -159,13 +159,31 @@ function es_return() {
 }
 
 function es_return_unicode() {
-    if [ ${1} -gt 0 ] ; then
-        echo -e " ${COLOR[red]}${ICON[fail]}${COLOR[none]}"
-    else
-        echo -e " ${COLOR[green]}${ICON[success]}${COLOR[none]}"
+    local last_ret=$?
+    local ret=${@:-${last_ret:-1}}
+    local status=1
+    local icon='fail'
+    local iconcolor='red'
+    local tmpname
+
+    local positives="0 true success ok"
+    for tmpname in ${positives} ; do
+        if [ "${ret}" == "${tmpname}" ] ; then
+            status=0
+            iconcolor='green'
+            icon='success'
+            break
+        fi
+    done
+
+    if [ ! ${status} -eq 0 ] ; then
+        if ( echo "${ret}" | grep -q "^[0-9]\+$" ) ; then
+            status=${ret}
+        fi
     fi
 
-    return ${1}
+    echo -e " $( color ${iconcolor} )$( icon $icon )$( color )"
+    return ${status} 
 }
 
 function es_exit() {
@@ -275,45 +293,6 @@ function es_edit() {
     ${EDITOR} ${ESSENTIALS_DIR}/*.sh ${ESSENTIALS_HOME}/{.bashrc,.profile,.xsession,.gitconfig,.ssh/config,.doc/*.md} ${ESSENTIALS_DIR}/*.md ${@}
 }
 
-function es_prompt() {
-    local lastret=$?
-    local PS1error=$( [ ${lastret} -gt 0 ] && echo "${lastret}" )
-    local PS1user="${ESSENTIALS_USER}"
-    local PS1host="\h"
-    local PS1path="\w"
-    local PS1chroot=
-    PS1chroot=${PS1chroot:+(chroot) }
-
-    if ( ${ESSENTIALS_COLORS} ) ; then
-        PS1error=${PS1error:+$( color.ps1 red )${PS1error}$( color.ps1 )}
-        PS1path=${PS1path:+$( color.ps1 white_background )${PS1path}$( color.ps1 )}
-        PS1path=${PS1path:+$( color.ps1 black )${PS1path}}
-        PS1chroot=${PS1chroot:+($( color.ps1 red )chroot$( color.ps1 ))}
-        
-        if ${ESSENTIALS_IS_UID0} ; then
-            PS1user=${PS1user:+$( color.ps1 red )${PS1user}$( color.ps1 )}
-        fi
-        
-        if ${ESSENTIALS_IS_SSH} ; then
-            PS1host=${PS1host:+$( color.ps1 red )${PS1host}$( color.ps1 )}
-        fi
-    fi
-    
-    if [ -e ${ESSENTIALS_DIR}/gitstatus.sh ] && [ -n "$( which timeout )" ] ; then
-        PS1git=$( LANG=C timeout 0.5 ${ESSENTIALS_DIR}/gitstatus.sh ${ESSENTIALS_COLORS} )
-        local gitret=$?
-        [ $gitret -eq 124 ] && PS1git="($( color.ps1 red )git slow$( color.ps1 ))"
-    else
-        PS1git=
-    fi
-
-    PS1error=${PS1error:+[${PS1error}] }
-    PS1git=${PS1git:+ ${PS1git}}
-    PS1prompt=" > "
-
-    PS1="${PS1error}${PS1chroot}${PS1user}@${PS1host} ${PS1path}${PS1git}${PS1prompt}"
-}
-
 function es_goodmorning() {
     for i in ${@} ; do
         echo $i
@@ -323,7 +302,7 @@ function es_goodmorning() {
     local has_root=false
 
     clear
-    es_header "${COLOR[white_bold]}Good Morning, ${SUDO_USER:-${USER^}}!${COLOR[none]}"
+    es_header "$( color white_bold )Good Morning, ${SUDO_USER:-${USER^}}!$( color )"
     show.stats
 
     if [ $( id -u ) -eq 0 ] ; then
@@ -335,9 +314,9 @@ function es_goodmorning() {
     fi
 
     if ! ( ${has_root} ) ; then
-        echo -e "\n${COLOR[white_under]}${COLOR[white_bold]}sudo:${COLOR[none]}"
+        echo -e "\n$( color white_under )$( color white_bold )sudo$( color )"
         if ! ( sudo echo -n ) ; then
-            echo -e "\n${COLOR[red]}error${COLOR[none]}: couldn't unlock sudo\n" >&2
+            echo -e "\n$( color red )error$( color ): couldn't unlock sudo\n" >&2
             return 1
         else
             has_root=true
@@ -345,16 +324,16 @@ function es_goodmorning() {
         fi
     fi
 
-    echo -e "\n${COLOR[white_under]}${COLOR[white_bold]}Debian:${COLOR[none]}"
+    echo -e "\n$( color white_under )$( color white_bold )Debian:$( none )"
     echo "version: $( lsb_release -ds 2>&1 )"
 
     echo -n "updating packagelists: "
     local out=$( ${sudo_cmd} apt-get update 2>&1 )
     local ret=$?
     if [ $ret -eq 0 ] ; then
-        echo -e "success ${COLOR[green]}${icon[ok]}${COLOR[none]}"
+        echo -e "success $( color green )$( icon ok )$( color )"
     else
-        echo -e "failed ${COLOR[red]}${icon[fail]}${COLOR[none]}"
+        echo -e "failed $( color red )$( icon fail )$( color )"
         let status++
     fi
 
@@ -371,15 +350,9 @@ function es_goodmorning() {
     update.repo git@simon.psaux.de:dot.backgrounds.git ~/.backgrounds/ || let status++
     update.repo git@simon.psaux.de:home.git ~/ || let status++
 
-    es_header "${COLOR[white_bold]}Have a nice day, ${SUDO_USER:-${USER^}}! (-:${COLOR[none]}"
+    es_header "$( color white_bold )Have a nice day, ${SUDO_USER:-${USER^}}! (-:$( color )"
     return $status
 }
-
-# shorties
-alias p='ps aux | grep -i'
-function t() { true; }
-function f() { false; }
-function r() { return ${1:-0}; }
 
 # check if powerline patched font for vim is available
 export POWERLINE_FONT=$( [ $( find ~/.fonts/ -iname "*pragmata*powerline*ttf" 2>/dev/null | wc -l ) -eq 0 ] ; echo ${BOOLEAN[$?]} )
@@ -474,6 +447,12 @@ alias dmesg='dmesg -T --color=auto'
 alias wget='wget -c'
 alias tmux='TERM=screen-256color-bce tmux'
 
+# shorties
+function t() { true; }
+function f() { false; }
+function r() { return ${1:-0}; }
+function p() { ps aux | grep -i ${@:-^}; }
+
 # essential settings
 export ESSENTIALS_USER="${ESSENTIALS_USER:-${CONFIG['user']:-${SUDO_USER:-${USER}}}}"
 export ESSENTIALS_HOME="${ESSENTIALS_HOME:-${CONFIG['home']:-$( getent passwd ${ESSENTIALS_USER} | cut -d':' -f6 )}}"
@@ -502,9 +481,6 @@ export ESSENTIALS_IS_MOSH=$( pstree -s "$$" | grep -qi 'mosh' ; echo ${BOOLEAN[$
 export ESSENTIALS_IS_TMUX=$( pstree -s "$$" | grep -qi 'tmux' ; echo ${BOOLEAN[$?]} )
 export ESSENTIALS_IS_SCREEN=$( pstree -s "$$" | grep -qi 'screen' ; echo ${BOOLEAN[$?]} )
 export ESSENTIALS_HAS_SSHAGENT=$( [ -n "$( ps hp ${SSH_AGENT_PID} 2>/dev/null )" ] ; echo ${BOOLEAN[$?]} ) 
-
-# set essentials prompt
-export PROMPT_COMMAND="es_prompt${PROMPT_COMMAND:+ ; ${PROMPT_COMMAND}}"
 
 # cleanup
 unset CONFIG tmpname script bin pkg configfile i j

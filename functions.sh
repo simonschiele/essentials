@@ -109,12 +109,12 @@ function update.repo() {
     local dir="${2}"
 
     if [ ! -d "${dir}" ] ; then
-        echo -en "  ${ICON['whitecircle']}  Initializing ${dir} (via ${repo})"
+        echo -en "  $( icon whitecircle )  Initializing ${dir} (via ${repo})"
         local out=$( LANG=C git clone --recursive "${repo}" "${dir}" 2>&1 )
-        echo -en "\r  ${ICON['blackcircle']}  Initializing ${dir} (via ${repo})"
+        echo -en "\r  $( icon blackcircle )  Initializing ${dir} (via ${repo})"
         local ret=$?
     else
-        echo -en "  ${ICON['blackcircle']}  Updating ${dir}"
+        echo -en "  $( icon blackcircle )  Updating ${dir}"
         cd "${dir}" 2>/dev/null && local out=$( LANG=C git pull --recurse-submodules=yes 2>&1 )
         local ret=$? ; [ $ret -eq 0 ] && cd ${OLDPWD}
         fi
@@ -183,7 +183,7 @@ function debian.security() {
         | cut -f'2-' -d'=' \
         | sed -e ':a;N;$!ba;s/\n/ /g' -e 's/\(20[0-9]\{2\}-\)/\n\1/g' \
         | awk {'print $1" "$4" ("$2")"'} \
-        | sed "s|^|\ \ $( echo -e ${ICON[fail]})\ \ |g" \
+        | sed "s|^|\ \ $( echo -e ${ICONS[fail]})\ \ |g" \
         | tac \
         | head -n ${1:-6}
 }
@@ -410,7 +410,7 @@ function show.stats() {
     color.echon "white_bold" "Location: " ; whereami
     color.echon "white_bold" "Systemtype: " ; echo "${system_type}"
 
-    echo -e "\n${COLOR[white_under]}${COLOR[white_bold]}Hardware:${COLOR[none]}"
+    echo -e "\n$( color white_under )$( color white_bold )Hardware:$( color )"
 
     cpu=$( grep "^model\ name" /proc/cpuinfo | sed -e "s|^[^:]*:\([^:]*\)$|\1|g" -e "s/[\ ]\{2\}//g" -e "s|^\ ||g" )
     echo -e 'cpu: '$( echo -e "$cpu" | wc -l )'x '$( echo "$cpu" | head -n1 )
