@@ -1,5 +1,7 @@
 # temporary removes / movings
 deprecated.sh
+my*config.sh
+custom*config.sh
 
 # ignore garbage  
 .DS_Store

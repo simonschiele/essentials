@@ -1,29 +1,5 @@
 #!/bin/bash
 
-# config defaults 
-export LUKS_KEYSIZE='512'
-export LUKS_CIPHER='aes-xts-plain64:sha256'
-
-# default applications
-export PAGER=less
-export BROWSER='google-chrome'
-export MAILER='icedove'
-export TERMINAL='terminator'
-export OPEN='gnome-open'
-
-# application overwrites
-alias cp='cp -i -r'
-alias mv='mv -i'
-alias rm='rm -i'
-alias sudo='sudo '  # sudo fix
-alias less='less'
-alias mkdir='mkdir -p'
-alias screen='screen -U'
-alias dmesg='dmesg -T --color=auto'
-alias wget='wget -c'
-alias tmux='TERM=screen-256color-bce tmux'
-
-
 function es_out() {
     if [[ -z "${@}" ]] ; then
         local msgtype=""
@@ -292,11 +268,11 @@ function es_tmp_file() {
 }
 
 function es_grep() {
-    grep -r ${@:-^} ${ESSENTIALS_DIR}/ ${ESSENTIALS_HOME}/{.bashrc,.profile,.xsession,.gitconfig,.ssh/config}
+    grep -r ${@:-^} ${ESSENTIALS_DIR}/ ${ESSENTIALS_HOME}/{.bashrc,.profile,.xsession,.gitconfig,.ssh/config,.bin*/}
 }
 
 function es_edit() {
-    ${EDITOR} ${ESSENTIALS_DIR}/{*.sh,*.md} ${ESSENTIALS_HOME}/{.bashrc,.profile,.xsession,.gitconfig,.ssh/config} ${@}
+    ${EDITOR} ${ESSENTIALS_DIR}/*.sh ${ESSENTIALS_HOME}/{.bashrc,.profile,.xsession,.gitconfig,.ssh/config,.doc/*.md} ${ESSENTIALS_DIR}/*.md ${@}
 }
 
 function es_prompt() {
@@ -405,21 +381,6 @@ function t() { true; }
 function f() { false; }
 function r() { return ${1:-0}; }
 
-# default editor (vim + failover)
-EDITOR=$( which vim.nox )
-EDITOR=${EDITOR:-$( which vim )}
-if [ -n "${EDITOR}" ] ; then
-    alias vim.blank="${EDITOR} -N -u NONE -U NONE"
-    alias vim.none=vim.blank
-    alias vim.bigfile=vim.blank
-fi
-EDITOR=${EDITOR:-$( which vi )}
-EDITOR=${EDITOR:-$( which nano )}
-EDITOR=${EDITOR:-$( which joe )}
-EDITOR=${EDITOR:-$( which mcedit )}
-EDITOR=${EDITOR:-$( which emacs )}
-export EDITOR
-
 # check if powerline patched font for vim is available
 export POWERLINE_FONT=$( [ $( find ~/.fonts/ -iname "*pragmata*powerline*ttf" 2>/dev/null | wc -l ) -eq 0 ] ; echo ${BOOLEAN[$?]} )
 
@@ -458,7 +419,64 @@ for pkg in ${tmpname} ; do
     es_depends "${pkg}" "debian" || es_out "optional depends $pkg missing" "warning"
 done
 
+# load config
+declare -A CONFIG
+
+tmpname="my*config.sh custom*config.sh config.sh"
+for configfile in ${tmpname} ; do
+    if [ -e ${ESSENTIALS_DIR}/${configfile} ] ; then
+        . ${ESSENTIALS_DIR}/${configfile}
+    fi
+done
+
+# config defaults 
+export LUKS_KEYSIZE=${CONFIG['luks_keysize']:-512}
+export LUKS_CIPHER=${CONFIG['luks_cipher']:-aes-xts-plain64:sha256}
+
+# default applications
+export PAGER=${CONFIG['pager']:-less}
+export BROWSER=${CONFIG['browser']:-google-chrome}
+export MAILER=${CONFIG['mailer']:-icedove}
+export OPEN=${CONFIG['open']:-gnome-open}
+
+# default editor (vim + failover)
+EDITOR=${CONFIG['editor']:-$( which vim.nox )}
+EDITOR=${EDITOR:-$( which vim )}
+if [ -n "${EDITOR}" ] ; then
+    alias vim.blank="${EDITOR} -N -u NONE -U NONE"
+    alias vim.none=vim.blank
+    alias vim.bigfile=vim.blank
+fi
+EDITOR=${EDITOR:-$( which vi )}
+EDITOR=${EDITOR:-$( which nano )}
+EDITOR=${EDITOR:-$( which joe )}
+EDITOR=${EDITOR:-$( which mcedit )}
+EDITOR=${EDITOR:-$( which emacs )}
+export EDITOR
+
+# default terminal
+TERMINAL=${CONFIG['terminal']:-$( which terminator )}
+TERMINAL=${TERMINAL:-$( which gnome-terminal )}
+TERMINAL=${TERMINAL:-$( which rxvt-unicode )}
+TERMINAL=${TERMINAL:-$( which xfce-terminal )}
+TERMINAL=${TERMINAL:-$( which xterm )}
+export TERMINAL
+
+# application overwrites
+alias cp='cp -i -r'
+alias mv='mv -i'
+alias rm='rm -i'
+alias sudo='sudo '  # sudo fix
+alias less='less'
+alias mkdir='mkdir -p'
+alias screen='screen -U'
+alias dmesg='dmesg -T --color=auto'
+alias wget='wget -c'
+alias tmux='TERM=screen-256color-bce tmux'
+
 # essential settings
+export ESSENTIALS_USER="${ESSENTIALS_USER:-${CONFIG['user']:-${SUDO_USER:-${USER}}}}"
+export ESSENTIALS_HOME="${ESSENTIALS_HOME:-${CONFIG['home']:-$( getent passwd ${ESSENTIALS_USER} | cut -d':' -f6 )}}"
 export ESSENTIALS_USER="${ESSENTIALS_USER:-${SUDO_USER:-${USER}}}"
 export ESSENTIALS_HOME="${ESSENTIALS_HOME:-$( getent passwd ${ESSENTIALS_USER} | cut -d':' -f6 )}"
 export ESSENTIALS_DIR_PKGLISTS="${ESSENTIALS_HOME}/.packages"
@@ -466,12 +484,12 @@ export ESSENTIALS_DIR_FONTS="${ESSENTIALS_HOME}/.fonts"
 export ESSENTIALS_DIR_WALLPAPERS="${ESSENTIALS_HOME}/.backgrounds"
 export ESSENTIALS_DIR_LOG="${ESSENTIALS_HOME}/.log"
 export ESSENTIALS_DIR_CACHE="${ESSENTIALS_HOME}/.cache"
-export ESSENTIALS_LOGFILE="${ESSENTIALS_DIR_LOG}/essentials.log"
+export ESSENTIALS_LOGFILE="${CONFIG['logfile']:-${ESSENTIALS_DIR_LOG}/essentials.log}"
 export ESSENTIALS_CACHEFILE="${ESSENTIALS_DIR_CACHE}/essentials.cache"
-export ESSENTIALS_DEBUG="${ESSENTIALS_DEBUG:-false}"
-export ESSENTIALS_LOG="${ESSENTIALS_LOG:-true}"
-export ESSENTIALS_COLORS="${ESSENTIALS_COLORS:-true}"
-export ESSENTIALS_UNICODE="${ESSENTIALS_UNICODE:-true}"
+export ESSENTIALS_DEBUG="${ESSENTIALS_DEBUG:-${CONFIG['debug']:-false}}"
+export ESSENTIALS_LOG="${ESSENTIALS_LOG:-${CONFIG['log']:-true}}"
+export ESSENTIALS_COLORS="${ESSENTIALS_COLORS:-${CONFIG['colors']:-true}}"
+export ESSENTIALS_UNICODE="${ESSENTIALS_UNICODE:-${CONFIG['unicode']:-true}}"
 export ESSENTIALS_VERSION=$( es_repo_version_date ${ESSENTIALS_DIR} )
 export ESSENTIALS_VERSION_VIM=$( vim --version | grep -o "[0-9.]\+" | head -n 1 )
 export ESSENTIALS_VERSION_GIT=$( git --version | sed 's/git version //' )
@@ -489,8 +507,5 @@ export ESSENTIALS_HAS_SSHAGENT=$( [ -n "$( ps hp ${SSH_AGENT_PID} 2>/dev/null )"
 export PROMPT_COMMAND="es_prompt${PROMPT_COMMAND:+ ; ${PROMPT_COMMAND}}"
 
 # cleanup
-unset tmpname script bin pkg
-
-# in debug mode -> print banner + settings overview
-${ESSENTIALS_DEBUG} && es_info
+unset CONFIG tmpname script bin pkg configfile i j
 
