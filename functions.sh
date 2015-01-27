@@ -663,7 +663,7 @@ alias wakeonlan.cbase='wakeonlan 00:50:8d:9c:3f:6e'
 
 # }}}
 
-# {{{ calc*
+# {{{ calc.*
 
 alias calculator='bc -l'
 alias calc='calculator'
@@ -685,7 +685,7 @@ alias system.strace_pid='strace -T -f -p'
 
 # }}}
 
-# {{{ kvm.* + qcow.* + iso.*
+# {{{ kvm.*, qcow.*, iso.*
 
 alias iso.grml='iso=$( ls -rt /share/Software/images/grml96*iso 2>/dev/null | tail -n1 ) ; iso=${iso:-$( find /boot -iname "grml*iso" 2>/dev/null )} ; iso=${iso:-$( find ~/ -iname "*grml*iso" 2>/dev/null | tail -n1 )} ; echo "$iso" ; unset iso'
 alias kvm.hd='kvm -m 1024 -boot c -hda'
@@ -718,14 +718,14 @@ function convert.nrg2iso() {
         time dd bs=1k if="${nrg}" of="${iso}" skip=300
         return 0
     fi
-    
+
     echo -e "${msg}" >&2
     return 1
 }
 
 # }}}
 
-# {{{ patch
+# {{{ patch.*
 
 alias patch.from_diff='patch -Np0 -i'
 
