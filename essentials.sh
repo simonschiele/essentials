@@ -441,6 +441,32 @@ alias dmesg='dmesg -T --color=auto'
 alias wget='wget -c'
 alias tmux='TERM=screen-256color-bce tmux'
 
+# application colors
+alias ls='ls --color=auto'
+alias grep='grep --color=auto'
+export GREP_COLOR='7;34'
+
+export LESS_TERMCAP_mb=$'\e[01;31m'
+export LESS_TERMCAP_md=$'\e[01;37m'
+export LESS_TERMCAP_me=$'\e[0m'
+export LESS_TERMCAP_se=$'\e[0m'
+export LESS_TERMCAP_so=$'\e[01;43;37m'
+export LESS_TERMCAP_ue=$'\e[0m'
+export LESS_TERMCAP_us=$'\e[01;32m'
+
+( which colordiff >/dev/null ) && alias diff='colordiff'
+( which pacman >/dev/null ) && alias pacman='pacman --color=auto'
+
+# dircolors
+if [ -x /usr/bin/dircolors ] ; then
+    eval "`dircolors -b`"
+fi
+
+# dircolors (solarized)
+if [ -r ~/.lib/dircolors-solarized/dircolors.256dark ] ; then
+    eval "`dircolors ~/.lib/dircolors-solarized/dircolors.256dark`"
+fi
+
 # shorties
 function t() { true; }
 function f() { false; }
