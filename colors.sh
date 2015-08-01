@@ -1,6 +1,6 @@
 #!/bin/bash
 
-declare -A COLORS
+declare -g -A COLORS
 
 COLORS[none]="\e[0m"
 COLORS[off]="\e[0m"
@@ -47,8 +47,6 @@ COLORS[purple_background]="\e[45m"
 COLORS[cyan_background]="\e[46m"
 COLORS[white_background]="\e[47m"
 COLORS[gray_background]="\e[100m"
-
-export COLORS
 
 function show.colors() {
     (

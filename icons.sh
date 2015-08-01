@@ -1,6 +1,6 @@
 #!/bin/bash
 
-declare -A ICONS
+declare -g -A ICONS
 
 ICONS[trademark]='\u2122'
 ICONS[copyright]='\u00A9'
@@ -37,8 +37,6 @@ ICONS[ok]='\u2714'
 ICONS[success]='\u2714'
 ICONS[warning]='⚠'
 
-export ICONS
-
 function show.icons() {
     (
         for key in "${!ICONS[@]}" ; do
@@ -73,4 +71,3 @@ function icon.color() {
     color.echon $color $( icon $icon )
     return ${status}
 }
-

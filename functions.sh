@@ -21,7 +21,7 @@ function whereami() {
 # {{{ nzb.queue()
 
 function nzb.queue() {
-    local target=/share/.usenet/queue/
+    local target=/share/.queue/
     local delete=true
 
     if [ ! -d ${target} ] ; then
