@@ -752,3 +752,7 @@ alias record.screenshot=screenshot
 
 # }}}
 
+# {{{ nmap.*
+alias nmap.fast_udp="sudo nmap -sU --max-retries 1 --min-rate 5000 -p 1-65535"
+
+# }}}
