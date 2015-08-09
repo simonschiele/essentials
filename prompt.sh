@@ -82,7 +82,7 @@ function es_prompt() {
     PS1="${PS1error}${PS1chroot}${PS1user}@${PS1host} ${PS1path}${PS1git}${PS1prompt}"
 }
 
-if [ "$( realpath ${0} )" == "$( realpath ${BASH_SOURCE[0]} )" ] ; then
+if [[ "${0}" != '-bash' ]] && [[ "$( realpath ${0} )" == "$( realpath ${BASH_SOURCE[0]} )" ]] ; then
     es_prompt_status ${1:-git} ${ESSENTIALS_COLORS:-${2:-false}}
 else
     export PROMPT_COMMAND="es_prompt${PROMPT_COMMAND:+ ; ${PROMPT_COMMAND}}"
