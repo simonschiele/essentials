@@ -3,12 +3,12 @@
 function es_prompt_status() {
     local status_type=${1:-git}
     local color=${2:-false}
-    es_prompt_status_${status_type} ${color} 
+    es_prompt_status ${status_type} ${color}
 }
 
 function es_prompt_status_git() {
     local color=${1:-false}
-    
+
     if ( $color ) && [ -z "${COLORS['red']}" ] ; then
         if [ -r ~/.essentials/colors.sh ] ; then
             . ~/.essentials/colors.sh
@@ -19,7 +19,7 @@ function es_prompt_status_git() {
     fi
 
     if $( LANG=C git rev-parse --is-inside-work-tree 2>/dev/null ) ; then
-        
+
         #local gitStatus="LANG=C git diff --quiet --ignore-submodules HEAD"
         local gitStatus="$( LANG=C git status 2>/dev/null )"
         local gitBranch="$( LANG=C git symbolic-ref -q --short HEAD )"
@@ -53,6 +53,8 @@ function es_prompt() {
     local PS1path="\w"
     local PS1git=
     local PS1chroot=
+    local PS1schroot=${SCHROOT_CHROOT_NAME:+(schroot:$SCHROOT_CHROOT_NAME)}
+    local PS1virtualenv=${VIRTUAL_ENV:+(virtualenv:$VIRTUAL_ENV)}
     PS1chroot=${PS1chroot:+(chroot) }
 
     if ( ${ESSENTIALS_COLORS} ) ; then
@@ -60,16 +62,16 @@ function es_prompt() {
         PS1path=${PS1path:+$( color.ps1 white_background )${PS1path}$( color.ps1 )}
         PS1path=${PS1path:+$( color.ps1 black )${PS1path}}
         PS1chroot=${PS1chroot:+($( color.ps1 red )chroot$( color.ps1 ))}
-        
+
         if ${ESSENTIALS_IS_UID0} ; then
             PS1user=${PS1user:+$( color.ps1 red )${PS1user}$( color.ps1 )}
         fi
-        
+
         if ${ESSENTIALS_IS_SSH} ; then
             PS1host=${PS1host:+$( color.ps1 red )${PS1host}$( color.ps1 )}
         fi
     fi
-    
+
     if [ -e ${ESSENTIALS_DIR}/prompt.sh ] && [ -n "$( which timeout )" ] ; then
         PS1git=$( LANG=C timeout 0.5 ${ESSENTIALS_DIR}/prompt.sh git ${ESSENTIALS_COLORS} )
         local gitret=$?
@@ -79,10 +81,10 @@ function es_prompt() {
     PS1error=${PS1error:+[${PS1error}] }
     PS1git=${PS1git:+ ${PS1git}}
 
-    PS1="${PS1error}${PS1chroot}${PS1user}@${PS1host} ${PS1path}${PS1git}${PS1prompt}"
+    PS1="${PS1error}${PS1chroot}${PS1user}@${PS1host} ${PS1path}${PS1git}${PS1schroot}${PS1virtualenv}${PS1prompt}"
 }
 
-if [[ "${0}" != '-bash' ]] && [[ "$( realpath ${0} )" == "$( realpath ${BASH_SOURCE[0]} )" ]] ; then
+if [[ "${0}" != '-bash' ]] && [[ "$( readlink -f ${0} )" == "$( readlink -f ${BASH_SOURCE[0]} )" ]] ; then
     es_prompt_status ${1:-git} ${ESSENTIALS_COLORS:-${2:-false}}
 else
     export PROMPT_COMMAND="es_prompt${PROMPT_COMMAND:+ ; ${PROMPT_COMMAND}}"
