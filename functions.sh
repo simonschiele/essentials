@@ -268,7 +268,7 @@ function battery.save() {
     echo 'auto' > /sys/bus/usb/devices/2-1.4/power/control
 
     es_debug " * deactivate WOL for eth0"
-    ethtool -s eth0 wol d
+    ethtool -s enp0s25 wol d
 
     es_debug " * enable audio codec power management"
     echo '1' > /sys/module/snd_hda_intel/parameters/power_save
@@ -277,7 +277,7 @@ function battery.save() {
     echo '1500' > /proc/sys/vm/dirty_writeback_centisecs
 
     es_debug " * wireless power saving for wlan0"
-    iw dev wlan0 set power_save on
+    iw dev wlp2s0 set power_save on
 
     es_debug " * activating sata link power managenment on host0-host$(( $( ls /sys/class/scsi_host/host*/link_power_management_policy | wc -l ) - 1 ))"
     seq 0 $(( $( ls /sys/class/scsi_host/host*/link_power_management_policy | wc -l ) - 1 )) | while read i ; do
@@ -285,11 +285,11 @@ function battery.save() {
     done
 
     es_debug " * enabling power control for pci bus"
-    for f in ls /sys/bus/pci/devices/*/power/control ; do echo 'auto' > "$f" ; done
+    for f in /sys/bus/pci/devices/*/power/control ; do echo 'auto' > "$f" ; done
 
     es_debug " * enabling power control for usb bus"
-    for f in ls /sys/bus/usb/devices/*/power/control ; do echo 'on' > "$f" ; done
-    for f in ls /sys/bus/usb/devices/*/power/control ; do echo 'auto' > "$f" ; done
+    for f in /sys/bus/usb/devices/*/power/control ; do echo 'on' > "$f" ; done
+    for f in /sys/bus/usb/devices/*/power/control ; do echo 'auto' > "$f" ; done
 }
 
 alias show.battery=battery.show
@@ -353,7 +353,7 @@ function grep.tld() {
 
 function show.path() {
     local path="${1}"
-    local path_real=$( realpath "${path}" )
+    local path_real=$( readlink -f "${path}" )
     local filetype=$( file -b "${path}" )
     local filetype_real=$( file -b "${path_real}" )
     local size=$( ls -s "${path_real}" | awk {'print $1'} )

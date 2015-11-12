@@ -54,7 +54,7 @@ alias wget='wget -c'
 alias tmux='TERM=screen-256color-bce tmux'
 
 # application colors
-alias ls='ls --color=auto'
+alias ls='LC_COLLATE=C ls --color=auto --group-directories-first -p'
 alias grep='grep --color=auto'
 export GREP_COLOR='7;34'
 

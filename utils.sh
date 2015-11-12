@@ -119,6 +119,11 @@ function es_depends_essentials() {
         return 1
     fi
 
+    # toilet|figlet
+    # git
+    # vim (why?)
+    # pstree (psmisc)
+
     return 0
 }
 
@@ -234,10 +239,10 @@ function es_called_by_pipe() {
 }
 
 function es_called_by_include() {
-    [[ "$( realpath ${0} )" != "$( realpath ${BASH_SOURCE[0]} )" ]]
+    [[ "$( readlink -f ${0} )" != "$( readlink -f ${BASH_SOURCE[0]} )" ]]
 }
 
 function es_called_by_exec() {
-    [[ "$( realpath ${0} )" == "$( realpath ${BASH_SOURCE[0]} )" ]]
+    [[ "$( readlink -f ${0} )" == "$( readlink -f ${BASH_SOURCE[0]} )" ]]
 }
 
